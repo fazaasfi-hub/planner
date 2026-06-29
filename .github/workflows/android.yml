@@ -24,6 +24,7 @@ jobs:
       uses: gradle/actions/setup-gradle@v4
       with:
         wrapper-validation-enabled: false
+        validate-wrappers: false
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
