@@ -55,15 +55,20 @@ class TransactionNotificationListener : NotificationListenerService() {
                            fullText.contains("dikirimkan ke kamu", ignoreCase = true) ||
                            fullText.contains("ditambahkan", ignoreCase = true) ||
                            fullText.contains("top up", ignoreCase = true) ||
+                           fullText.contains("isi saldo", ignoreCase = true) ||
+                           fullText.contains("transfer dari", ignoreCase = true) ||
+                           fullText.contains("dana masuk", ignoreCase = true) ||
+                           fullText.contains("cashback", ignoreCase = true) ||
                            fullText.contains("refund", ignoreCase = true)
 
             val type = if (isIncome) "income" else "expense"
             
             // Clean up the description
             val description = when {
+                fullText.contains("isi saldo", ignoreCase = true) || fullText.contains("top up", ignoreCase = true) -> "Top Up Saldo DANA (Otomatis)"
                 isIncome -> "DANA Masuk (Otomatis)"
                 fullText.contains("pembayaran", ignoreCase = true) || fullText.contains("bayar", ignoreCase = true) -> "Pembayaran DANA (Otomatis)"
-                fullText.contains("kirim", ignoreCase = true) || fullText.contains("transfer", ignoreCase = true) -> "Transfer DANA (Otomatis)"
+                fullText.contains("kirim", ignoreCase = true) || fullText.contains("transfer ke", ignoreCase = true) || fullText.contains("transfer", ignoreCase = true) -> "Transfer DANA (Otomatis)"
                 else -> "Transaksi DANA (Otomatis)"
             }
 
