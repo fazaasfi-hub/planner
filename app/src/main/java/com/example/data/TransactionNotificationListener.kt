@@ -49,26 +49,37 @@ class TransactionNotificationListener : NotificationListenerService() {
             val rawAmount = matcher.group(1) ?: return
             val amount = rawAmount.replace(".", "").replace(",", "").toDoubleOrNull() ?: return
 
-            // Determine if income or expense based on keywords popular in Indonesian payment gateways (DANA, GoPay, etc.)
-            val isIncome = fullText.contains("menerima", ignoreCase = true) ||
-                           fullText.contains("masuk", ignoreCase = true) ||
-                           fullText.contains("dikirimkan ke kamu", ignoreCase = true) ||
-                           fullText.contains("ditambahkan", ignoreCase = true) ||
-                           fullText.contains("top up", ignoreCase = true) ||
-                           fullText.contains("isi saldo", ignoreCase = true) ||
-                           fullText.contains("transfer dari", ignoreCase = true) ||
-                           fullText.contains("dana masuk", ignoreCase = true) ||
-                           fullText.contains("cashback", ignoreCase = true) ||
-                           fullText.contains("refund", ignoreCase = true)
+            val lowerText = fullText.lowercase()
 
-            val type = if (isIncome) "income" else "expense"
+            val isExpenseExplicit = lowerText.contains("berhasil kirim") ||
+                                    lowerText.contains("berhasil transfer ke") ||
+                                    lowerText.contains("transfer ke") ||
+                                    lowerText.contains("pembayaran") ||
+                                    lowerText.contains("berhasil bayar") ||
+                                    lowerText.contains("telah dibayar") ||
+                                    lowerText.contains("ditarik")
+
+            val isIncomeExplicit = lowerText.contains("menerima") ||
+                                   lowerText.contains("terima saldo") ||
+                                   lowerText.contains("terima uang") ||
+                                   lowerText.contains("masuk") ||
+                                   lowerText.contains("ke kamu") ||
+                                   lowerText.contains("ditambahkan") ||
+                                   lowerText.contains("top up") ||
+                                   lowerText.contains("isi saldo") ||
+                                   lowerText.contains("transfer dari") ||
+                                   lowerText.contains("dana kaget") ||
+                                   lowerText.contains("cashback") ||
+                                   lowerText.contains("refund")
+
+            val type = if (isIncomeExplicit && !isExpenseExplicit) "income" else "expense"
             
             // Clean up the description
             val description = when {
-                fullText.contains("isi saldo", ignoreCase = true) || fullText.contains("top up", ignoreCase = true) -> "Top Up Saldo DANA (Otomatis)"
-                isIncome -> "DANA Masuk (Otomatis)"
-                fullText.contains("pembayaran", ignoreCase = true) || fullText.contains("bayar", ignoreCase = true) -> "Pembayaran DANA (Otomatis)"
-                fullText.contains("kirim", ignoreCase = true) || fullText.contains("transfer ke", ignoreCase = true) || fullText.contains("transfer", ignoreCase = true) -> "Transfer DANA (Otomatis)"
+                lowerText.contains("isi saldo") || lowerText.contains("top up") -> "Top Up Saldo DANA (Otomatis)"
+                type == "income" -> "DANA Masuk (Otomatis)"
+                lowerText.contains("pembayaran") || lowerText.contains("bayar") -> "Pembayaran DANA (Otomatis)"
+                lowerText.contains("kirim") || lowerText.contains("transfer ke") || lowerText.contains("transfer") -> "Transfer DANA (Otomatis)"
                 else -> "Transaksi DANA (Otomatis)"
             }
 
