@@ -17,11 +17,7 @@ class TransactionNotificationListener : NotificationListenerService() {
 
     override fun onCreate() {
         super.onCreate()
-        database = Room.databaseBuilder(
-            applicationContext,
-            PlannerDatabase::class.java,
-            "planner_pro_database"
-        ).fallbackToDestructiveMigration().build()
+        database = PlannerDatabase.getDatabase(applicationContext)
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
@@ -33,8 +29,8 @@ class TransactionNotificationListener : NotificationListenerService() {
         // For testing, we can also check for test notification triggers
         if (packageName == "id.dana" || packageName == applicationContext.packageName) {
             val extras = sbn.notification.extras
-            val title = extras.getString(Notification.EXTRA_TITLE) ?: ""
-            val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
+            val title = (extras.getCharSequence(Notification.EXTRA_TITLE) ?: extras.getString(Notification.EXTRA_TITLE) ?: "").toString()
+            val text = (extras.getCharSequence(Notification.EXTRA_TEXT) ?: extras.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: "").toString()
 
             Log.d("NotificationListener", "Received notification from $packageName. Title: $title, Text: $text")
 
@@ -51,7 +47,7 @@ class TransactionNotificationListener : NotificationListenerService() {
         
         if (matcher.find()) {
             val rawAmount = matcher.group(1) ?: return
-            val amount = rawAmount.replace(".", "").replace(",", "").toLongOrNull() ?: return
+            val amount = rawAmount.replace(".", "").replace(",", "").toDoubleOrNull() ?: return
 
             // Determine if income or expense based on keywords popular in Indonesian payment gateways (DANA, GoPay, etc.)
             val isIncome = fullText.contains("menerima", ignoreCase = true) ||

@@ -1,0 +1,64 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- Clipboard Plate -->
+    <path
+        android:fillColor="#8590ff"
+        android:pathData="M 35,35
+                          H 85
+                          C 92,35 95,38 95,45
+                          V 105
+                          C 95,112 92,115 85,115
+                          H 35
+                          C 28,115 25,112 25,105
+                          V 45
+                          C 25,38 28,35 35,35 Z" />
+
+    <!-- Clipboard Top Tab (The peg/clip on top) -->
+    <path
+        android:fillColor="#8590ff"
+        android:pathData="M 49,35 
+                          C 49,23 71,23 71,35 Z" />
+
+    <!-- Tab Peg Hole -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 60,27 
+                          A 4,4 0 1,1 60,35 
+                          A 4,4 0 1,1 60,27 Z" />
+
+    <!-- List Item 1: Bullet and Line -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 42,56 
+                          A 4,4 0 1,1 42,64 
+                          A 4,4 0 1,1 42,56 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 55,57
+                          H 80
+                          A 3,3 0 0,1 83,60
+                          A 3,3 0 0,1 80,63
+                          H 55
+                          A 3,3 0 0,1 52,60
+                          A 3,3 0 0,1 55,57 Z" />
+
+    <!-- List Item 2: Bullet and Line -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 42,78 
+                          A 4,4 0 1,1 42,86 
+                          A 4,4 0 1,1 42,78 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 55,79
+                          H 80
+                          A 3,3 0 0,1 83,82
+                          A 3,3 0 0,1 80,85
+                          H 55
+                          A 3,3 0 0,1 52,82
+                          A 3,3 0 0,1 55,79 Z" />
+</vector>

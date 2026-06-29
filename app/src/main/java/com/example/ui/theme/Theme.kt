@@ -54,47 +54,17 @@ fun MyApplicationTheme(
   val baseScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
   // Override primary and secondary based on accent selected dynamically
-  val overridenScheme = when (themeAccent) {
-    "Emerald" -> {
-      if (darkTheme) {
-        baseScheme.copy(
-          primary = Color(0xFF34D399),
-          secondary = Color(0xFF6EE7B7)
-        )
-      } else {
-        baseScheme.copy(
-          primary = Color(0xFF059669),
-          secondary = Color(0xFF10B981)
-        )
-      }
-    }
-    "Amber" -> {
-      if (darkTheme) {
-        baseScheme.copy(
-          primary = Color(0xFFFBBF24),
-          secondary = Color(0xFFFDE047)
-        )
-      } else {
-        baseScheme.copy(
-          primary = Color(0xFFD97706),
-          secondary = Color(0xFFF59E0B)
-        )
-      }
-    }
-    "Teal" -> {
-      if (darkTheme) {
-        baseScheme.copy(
-          primary = Color(0xFF2DD4BF),
-          secondary = Color(0xFF5EEAD4)
-        )
-      } else {
-        baseScheme.copy(
-          primary = Color(0xFF0D9488),
-          secondary = Color(0xFF14B8A6)
-        )
-      }
-    }
-    else -> baseScheme // Indigo default
+  val accentColors = AccentColors[themeAccent] ?: AccentColors["Indigo"]!!
+  val overridenScheme = if (darkTheme) {
+    baseScheme.copy(
+      primary = accentColors[2],
+      secondary = accentColors[3]
+    )
+  } else {
+    baseScheme.copy(
+      primary = accentColors[0],
+      secondary = accentColors[1]
+    )
   }
 
   MaterialTheme(colorScheme = overridenScheme, typography = Typography, content = content)

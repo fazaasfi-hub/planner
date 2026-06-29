@@ -1,0 +1,77 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+    
+    <!-- Background Squircle: Rounded Rectangle (Soft iOS-like squircle shape) -->
+    <path
+        android:fillColor="#1b1b3a"
+        android:pathData="M 60,10 
+                          H 140 
+                          C 175,10 190,25 190,60 
+                          V 140 
+                          C 190,175 175,190 140,190 
+                          H 60 
+                          C 25,190 10,175 10,140 
+                          V 60 
+                          C 10,25 25,10 60,10 Z" />
+
+    <!-- Clipboard Plate -->
+    <path
+        android:fillColor="#8590ff"
+        android:pathData="M 80,70
+                          H 120
+                          C 126,70 128,72 128,78
+                          V 132
+                          C 128,138 126,140 120,140
+                          H 80
+                          C 74,140 72,138 72,132
+                          V 78
+                          C 72,72 74,70 80,70 Z" />
+
+    <!-- Clipboard Top Tab (The peg/clip on top) -->
+    <path
+        android:fillColor="#8590ff"
+        android:pathData="M 91,70 
+                          C 91,61 109,61 109,70 Z" />
+
+    <!-- Tab Peg Hole -->
+    <path
+        android:fillColor="#1b1b3a"
+        android:pathData="M 100,64 
+                          A 3,3 0 1,1 100,70 
+                          A 3,3 0 1,1 100,64 Z" />
+
+    <!-- List Item 1: Bullet and Line -->
+    <path
+        android:fillColor="#1b1b3a"
+        android:pathData="M 86,87 
+                          A 3,3 0 1,1 86,93 
+                          A 3,3 0 1,1 86,87 Z" />
+    <path
+        android:fillColor="#1b1b3a"
+        android:pathData="M 97,88
+                          H 113
+                          A 2,2 0 0,1 115,90
+                          A 2,2 0 0,1 113,92
+                          H 97
+                          A 2,2 0 0,1 95,90
+                          A 2,2 0 0,1 97,88 Z" />
+
+    <!-- List Item 2: Bullet and Line -->
+    <path
+        android:fillColor="#1b1b3a"
+        android:pathData="M 86,103 
+                          A 3,3 0 1,1 86,109 
+                          A 3,3 0 1,1 86,103 Z" />
+    <path
+        android:fillColor="#1b1b3a"
+        android:pathData="M 97,104
+                          H 113
+                          A 2,2 0 0,1 115,106
+                          A 2,2 0 0,1 113,108
+                          H 97
+                          A 2,2 0 0,1 95,106
+                          A 2,2 0 0,1 97,104 Z" />
+</vector>

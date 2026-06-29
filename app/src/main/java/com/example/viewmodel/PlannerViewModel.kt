@@ -6,6 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 enum class Screen {
     Dashboard, Study, Workout, Saving, Donghua, Chart, Budget
@@ -32,6 +35,34 @@ class PlannerViewModel(private val repository: PlannerRepository) : ViewModel() 
     // Toast state
     private val _toastMessage = MutableSharedFlow<String>()
     val toastMessage = _toastMessage.asSharedFlow()
+
+    // Notification Event
+    private val _deadlineEvent = MutableSharedFlow<StudyTask>()
+    val deadlineEvent = _deadlineEvent.asSharedFlow()
+
+    // Loading state
+    private val _isLoading = MutableStateFlow(true)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    fun stopLoading() {
+        _isLoading.value = false
+        startDeadlineChecker()
+    }
+
+    private fun startDeadlineChecker() {
+        viewModelScope.launch {
+            tasks.collect { taskList ->
+                val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                taskList.forEach { task ->
+                    if (!task.isDone && !task.isNotified && task.deadline == today) {
+                        _deadlineEvent.emit(task)
+                        // Mark as notified in DB
+                        repository.insertTask(task.copy(isNotified = true))
+                    }
+                }
+            }
+        }
+    }
 
     // Database flows
     val schedules: StateFlow<List<StudySchedule>> = repository.allSchedules
@@ -82,19 +113,34 @@ class PlannerViewModel(private val repository: PlannerRepository) : ViewModel() 
     }
 
     // 2. Budget Thresholds/Limit (Limit Pengeluaran Bulanan)
-    private val _budgetLimit = MutableStateFlow(1500000L) // Default 1.5M IDR
-    val budgetLimit: StateFlow<Long> = _budgetLimit.asStateFlow()
+    private val _budgetLimit = MutableStateFlow(1500000.0) // Default 1.5M IDR
+    val budgetLimit: StateFlow<Double> = _budgetLimit.asStateFlow()
 
-    fun updateBudgetLimit(newLimit: Long) {
+    fun updateBudgetLimit(newLimit: Double) {
         if (newLimit >= 0) {
             _budgetLimit.value = newLimit
-            showToast("Limit anggaran diperbarui ke Rp " + String.format("%,d", newLimit))
+            showToast("Limit anggaran diperbarui ke " + formatRupiahViewModel(newLimit))
         }
     }
 
+    private fun formatRupiahViewModel(amount: Double): String {
+        val formatter = java.text.DecimalFormat("#,###.00")
+        val symbols = java.text.DecimalFormatSymbols(java.util.Locale("id", "ID"))
+        symbols.groupingSeparator = '.'
+        symbols.decimalSeparator = ','
+        formatter.decimalFormatSymbols = symbols
+        return "Rp " + formatter.format(amount)
+    }
+
     // 3. Accent Colors Themes Choice
-    private val _themeAccent = MutableStateFlow("Indigo") // Indigo, Emerald, Amber, Teal
+    private val _themeAccent = MutableStateFlow("Indigo")
     val themeAccent: StateFlow<String> = _themeAccent.asStateFlow()
+    
+    val availableThemes = listOf(
+        "Indigo", "Emerald", "Amber", "Teal", "Red", "Pink", "Purple", "DeepPurple",
+        "Blue", "LightBlue", "Cyan", "Green", "LightGreen", "Lime", "Yellow",
+        "Orange", "DeepOrange", "Brown", "BlueGrey", "Grey"
+    )
 
     fun setThemeAccent(accent: String) {
         _themeAccent.value = accent
@@ -469,7 +515,7 @@ class PlannerViewModel(private val repository: PlannerRepository) : ViewModel() 
     }
 
     // Saving goals
-    fun addSavingGoal(name: String, target: Long, current: Long) {
+    fun addSavingGoal(name: String, target: Double, current: Double) {
         viewModelScope.launch {
             if (name.isBlank() || target <= 0) {
                 showToast("Nama & nominal target wajib diisi")
@@ -485,7 +531,7 @@ class PlannerViewModel(private val repository: PlannerRepository) : ViewModel() 
         }
     }
 
-    fun editSavingGoal(goal: SavingGoal, name: String, target: Long, current: Long) {
+    fun editSavingGoal(goal: SavingGoal, name: String, target: Double, current: Double) {
         viewModelScope.launch {
             if (name.isBlank() || target <= 0) {
                 showToast("Nama & nominal target wajib diisi")
@@ -603,13 +649,13 @@ class PlannerViewModel(private val repository: PlannerRepository) : ViewModel() 
     }
 
     // Budget Tracker
-    fun addTransaction(desc: String, amount: Long, type: String) {
+    fun addTransaction(desc: String, amount: Double, type: String) {
         viewModelScope.launch {
             if (desc.isBlank() || amount <= 0) {
                 showToast("Isi keterangan dan nominal transaksi")
                 return@launch
             }
-            if (amount > 200_000_000L) {
+            if (amount > 200_000_000.0) {
                 showToast("Maksimal transaksi Rp 200.000.000")
                 return@launch
             }

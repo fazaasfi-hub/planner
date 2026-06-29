@@ -35,7 +35,8 @@ data class StudyTask(
     val isDone: Boolean = false,
     val subject: String = "",
     val deadline: String = "", // YYYY-MM-DD
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val isNotified: Boolean = false
 )
 
 @Entity(tableName = "study_notes")
@@ -73,8 +74,8 @@ data class StepLog(
 data class SavingGoal(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
-    val targetAmount: Long,
-    val currentAmount: Long
+    val targetAmount: Double,
+    val currentAmount: Double
 )
 
 @Entity(tableName = "donghua_items")
@@ -94,7 +95,7 @@ data class DonghuaItem(
 data class BudgetTransaction(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val description: String,
-    val amount: Long,
+    val amount: Double,
     val type: String, // income, expense
     val date: Long = System.currentTimeMillis()
 )
@@ -231,9 +232,29 @@ interface PlannerDao {
         BudgetTransaction::class,
         StepLog::class
     ],
-    version = 2,
+    version = 4,
     exportSchema = false
 )
 abstract class PlannerDatabase : RoomDatabase() {
     abstract fun plannerDao(): PlannerDao
+
+    companion object {
+        @Volatile
+        private var INSTANCE: PlannerDatabase? = null
+
+        fun getDatabase(context: android.content.Context): PlannerDatabase {
+            return INSTANCE ?: synchronized(this) {
+                val instance = androidx.room.Room.databaseBuilder(
+                    context.applicationContext,
+                    PlannerDatabase::class.java,
+                    "planner_pro_database"
+                )
+                .enableMultiInstanceInvalidation()
+                .fallbackToDestructiveMigration()
+                .build()
+                INSTANCE = instance
+                instance
+            }
+        }
+    }
 }

@@ -4,6 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -13,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -34,8 +36,15 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.platform.LocalContext
+import android.media.RingtoneManager
+import com.example.ui.NotificationHelper
+import com.example.ui.theme.*
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.res.painterResource
+import com.example.R
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
@@ -62,14 +71,31 @@ import com.example.ui.theme.*
 import com.example.viewmodel.PlannerViewModel
 import com.example.viewmodel.Screen
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
 // Helper for currency formatting
-val rpFormat = DecimalFormat("#,###")
-fun formatRupiah(amount: Long): String {
-    return "Rp " + rpFormat.format(amount).replace(",", ".")
+fun formatRupiah(amount: Double): String {
+    val formatter = java.text.DecimalFormat("#,###.00")
+    val symbols = java.text.DecimalFormatSymbols(java.util.Locale("id", "ID"))
+    symbols.groupingSeparator = '.'
+    symbols.decimalSeparator = ','
+    formatter.decimalFormatSymbols = symbols
+    return "Rp " + formatter.format(amount)
+}
+
+// Helper for currency input formatting
+fun formatAsCurrency(input: String): String {
+    val clean = input.replace(".", "").replace(",", "")
+    if (clean.isEmpty()) return ""
+    val parsed = clean.toLongOrNull() ?: return input
+    val formatter = java.text.DecimalFormat("#,###")
+    val symbols = java.text.DecimalFormatSymbols(java.util.Locale("id", "ID"))
+    symbols.groupingSeparator = '.'
+    formatter.decimalFormatSymbols = symbols
+    return formatter.format(parsed)
 }
 
 // Map for Sport MET calculations
@@ -242,6 +268,9 @@ fun PlannerApp(viewModel: PlannerViewModel, isDarkTheme: Boolean, onThemeToggle:
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    val context = LocalContext.current
+    val notificationHelper = remember { NotificationHelper(context) }
+
     // Observe Toast from ViewModel
     LaunchedEffect(Unit) {
         viewModel.toastMessage.collect { msg: String ->
@@ -249,7 +278,29 @@ fun PlannerApp(viewModel: PlannerViewModel, isDarkTheme: Boolean, onThemeToggle:
         }
     }
 
-    ModalNavigationDrawer(
+    // Observe Deadlines from ViewModel
+    LaunchedEffect(Unit) {
+        viewModel.deadlineEvent.collect { task ->
+            notificationHelper.showDeadlineNotification(
+                title = "Deadline Tugas: ${task.subject}",
+                message = "Tugas '${task.text}' harus selesai hari ini!"
+            )
+            
+            // In-app sound effect
+            try {
+                val notificationUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                val r = RingtoneManager.getRingtone(context, notificationUri)
+                r.play()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    val isLoading by viewModel.isLoading.collectAsState(initial = true)
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
@@ -270,11 +321,10 @@ fun PlannerApp(viewModel: PlannerViewModel, isDarkTheme: Boolean, onThemeToggle:
                     contentAlignment = Alignment.BottomStart
                 ) {
                     Column {
-                        Icon(
-                            imageVector = Icons.Default.List,
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_sidebar_logo),
                             contentDescription = "App Logo",
-                            tint = Color.White,
-                            modifier = Modifier.size(48.dp)
+                            modifier = Modifier.size(56.dp)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
@@ -295,13 +345,13 @@ fun PlannerApp(viewModel: PlannerViewModel, isDarkTheme: Boolean, onThemeToggle:
 
                 // Drawer Navigation Items
                 val menuItems = listOf(
-                    Triple(Screen.Dashboard, "Dashboard", Icons.Default.Home),
-                    Triple(Screen.Study, "Belajar & Tugas", Icons.Default.List),
-                    Triple(Screen.Workout, "Olahraga", Icons.Default.PlayArrow),
-                    Triple(Screen.Saving, "Nabung", Icons.Default.Star),
-                    Triple(Screen.Donghua, "Donghua Tracker", Icons.Default.PlayArrow),
-                    Triple(Screen.Chart, "Grafik Statistik", Icons.Default.Info),
-                    Triple(Screen.Budget, "Budget Tracker", Icons.Default.List)
+                    Triple(Screen.Dashboard, "Dashboard", Icons.Outlined.Home),
+                    Triple(Screen.Study, "Belajar & Tugas", Icons.Outlined.School),
+                    Triple(Screen.Workout, "Olahraga", Icons.Outlined.FitnessCenter),
+                    Triple(Screen.Saving, "Nabung", Icons.Outlined.Savings),
+                    Triple(Screen.Donghua, "Donghua Tracker", Icons.Outlined.Movie),
+                    Triple(Screen.Chart, "Grafik Statistik", Icons.Outlined.BarChart),
+                    Triple(Screen.Budget, "Budget Tracker", Icons.Outlined.AccountBalanceWallet)
                 )
 
                 LazyColumn(modifier = Modifier.padding(horizontal = 12.dp)) {
@@ -339,13 +389,13 @@ fun PlannerApp(viewModel: PlannerViewModel, isDarkTheme: Boolean, onThemeToggle:
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Mode Gelap",
+                        text = if (isDarkTheme) "Mode Gelap" else "Mode Terang",
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                     )
                     IconButton(onClick = onThemeToggle) {
                         Icon(
-                            imageVector = if (isDarkTheme) Icons.Default.Refresh else Icons.Default.Settings,
+                            imageVector = if (isDarkTheme) Icons.Filled.DarkMode else Icons.Filled.WbSunny,
                             contentDescription = "Toggle Theme"
                         )
                     }
@@ -374,13 +424,13 @@ fun PlannerApp(viewModel: PlannerViewModel, isDarkTheme: Boolean, onThemeToggle:
                     },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(imageVector = Icons.Default.Menu, contentDescription = "Buka Menu")
+                            Icon(imageVector = Icons.Outlined.Menu, contentDescription = "Buka Menu")
                         }
                     },
                     actions = {
                         IconButton(onClick = onThemeToggle) {
                             Icon(
-                                imageVector = if (isDarkTheme) Icons.Default.Refresh else Icons.Default.Settings,
+                                imageVector = if (isDarkTheme) Icons.Filled.DarkMode else Icons.Filled.WbSunny,
                                 contentDescription = "Ubah Tema"
                             )
                         }
@@ -430,6 +480,12 @@ fun PlannerApp(viewModel: PlannerViewModel, isDarkTheme: Boolean, onThemeToggle:
                 }
             }
         }
+        }
+        LoadingOverlay(
+            isLoading = isLoading, 
+            onLoadingFinished = { viewModel.stopLoading() },
+            modifier = Modifier.zIndex(100f)
+        )
     }
 }
 
@@ -496,18 +552,8 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
         Math.round((minutes / 60.0) * 10) / 10.0
     }
 
-    // Dynamic greeting and date
-    val calendar = Calendar.getInstance()
-    val hour = calendar.get(Calendar.HOUR_OF_DAY)
-    val greeting = when {
-        hour in 4..10 -> "Selamat Pagi \uD83C\uDF05"
-        hour in 11..14 -> "Selamat Siang ☀️"
-        hour in 15..18 -> "Selamat Sore \uD83C\uDF07"
-        else -> "Selamat Malam \uD83C\uDF19"
-    }
-    val dateFormatter = SimpleDateFormat("EEEE, d MMMM yyyy", Locale("id", "ID"))
-    val todayDate = dateFormatter.format(calendar.time)
-
+    // The rest of the state...
+    
     val quotesList = remember {
         listOf(
             "Satu langkah kecil tetap lebih baik daripada tidak sama sekali.",
@@ -530,85 +576,15 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // GREETING BANNER WITH PROFILE CUSTOMIZATION
-        GlassyCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
-            accentColor = Color.White
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Profile Avatar circle
-                    Surface(
-                        shape = CircleShape,
-                        color = Color.White.copy(alpha = 0.2f),
-                        modifier = Modifier.size(60.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            val avatarEmoji = when(avatarIndex) {
-                                1 -> "🧠" // Scholar
-                                2 -> "🏃‍♂️" // Athlete
-                                3 -> "💰" // Financial Guru
-                                4 -> "🐉" // Otaku
-                                else -> "💻" // Programmer
-                            }
-                            Text(text = avatarEmoji, fontSize = 32.sp)
-                        }
-                    }
+        GreetingBanner(
+            profileName = profileName,
+            profileBio = profileBio,
+            avatarIndex = avatarIndex,
+            onEditClick = { showEditProfileDialog = true }
+        )
 
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = "$greeting, $profileName!",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            IconButton(
-                                onClick = { showEditProfileDialog = true },
-                                modifier = Modifier.size(24.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Settings,
-                                    contentDescription = "Edit Profil",
-                                    tint = Color.White.copy(alpha = 0.8f),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = profileBio,
-                            fontSize = 11.sp,
-                            color = Color.White.copy(alpha = 0.85f),
-                            maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.Home, contentDescription = "Kalender", tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(12.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = todayDate,
-                                fontSize = 11.sp,
-                                color = Color.White.copy(alpha = 0.7f)
-                            )
-                        }
-                    }
-                }
-            }
-        }
+        // REST OF THE UI...
+
 
         // EDIT PROFILE DIALOG
         if (showEditProfileDialog) {
@@ -709,22 +685,22 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Button(onClick = { viewModel.navigateTo(Screen.Study) }) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "Tugas")
+                Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tugas")
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("Tugas Baru")
             }
             Button(onClick = { viewModel.navigateTo(Screen.Workout) }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)) {
-                Icon(imageVector = Icons.Default.PlayArrow, contentDescription = "Olahraga")
+                Icon(imageVector = Icons.Outlined.FitnessCenter, contentDescription = "Olahraga")
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("Olahraga")
             }
             Button(onClick = { viewModel.navigateTo(Screen.Donghua) }, colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen)) {
-                Icon(imageVector = Icons.Default.PlayArrow, contentDescription = "Donghua")
+                Icon(imageVector = Icons.Outlined.Movie, contentDescription = "Donghua")
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("Donghua")
             }
             Button(onClick = { viewModel.navigateTo(Screen.Saving) }, colors = ButtonDefaults.buttonColors(containerColor = WarningAmber)) {
-                Icon(imageVector = Icons.Default.Star, contentDescription = "Nabung")
+                Icon(imageVector = Icons.Outlined.Savings, contentDescription = "Nabung")
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("Tabungan")
             }
@@ -741,7 +717,7 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Search,
+                        imageVector = Icons.Outlined.Search,
                         contentDescription = "Weather Icon",
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
@@ -826,7 +802,7 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
                     title = "Mata Pelajaran",
                     value = "$totalSubjects",
                     subtitle = "$studyHours jam/minggu",
-                    icon = Icons.Default.List,
+                    icon = Icons.Outlined.List,
                     modifier = Modifier.weight(1f),
                     badgeBg = MaterialTheme.colorScheme.primary
                 )
@@ -834,7 +810,7 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
                     title = "Total Tugas",
                     value = "$totalTasks",
                     subtitle = "$doneTasks selesai ($tasksPct%)",
-                    icon = Icons.Default.List,
+                    icon = Icons.Outlined.List,
                     modifier = Modifier.weight(1f),
                     badgeBg = MaterialTheme.colorScheme.secondary
                 )
@@ -844,7 +820,7 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
                     title = "Olahraga",
                     value = "$totalWorkout",
                     subtitle = "${totalCalories} kalori",
-                    icon = Icons.Default.PlayArrow,
+                    icon = Icons.Outlined.FitnessCenter,
                     modifier = Modifier.weight(1f),
                     badgeBg = SuccessGreen
                 )
@@ -852,7 +828,7 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
                     title = "Donghua",
                     value = "$totalDonghua",
                     subtitle = "$watchingDonghua tonton · $finishedDonghua selesai",
-                    icon = Icons.Default.PlayArrow,
+                    icon = Icons.Outlined.Movie,
                     modifier = Modifier.weight(1f),
                     badgeBg = WarningAmber
                 )
@@ -862,7 +838,7 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
                     title = "Tabungan",
                     value = formatRupiah(totalSavingsAmount),
                     subtitle = "$savingsPct% dari target",
-                    icon = Icons.Default.Star,
+                    icon = Icons.Outlined.Savings,
                     modifier = Modifier.weight(1f),
                     badgeBg = IndigoTertiary
                 )
@@ -870,7 +846,7 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
                     title = "Catatan",
                     value = "$totalNotes",
                     subtitle = "Ditulis sejauh ini",
-                    icon = Icons.Default.Info,
+                    icon = Icons.Outlined.Notes,
                     modifier = Modifier.weight(1f),
                     badgeBg = MaterialTheme.colorScheme.tertiary
                 )
@@ -998,7 +974,7 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
                     onClick = { viewModel.triggerLocalBackup() },
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Icon(imageVector = Icons.Default.CheckCircle, contentDescription = "Backup", modifier = Modifier.size(16.dp))
+                    Icon(imageVector = Icons.Outlined.CheckCircle, contentDescription = "Backup", modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Cadangkan", fontSize = 11.sp)
                 }
@@ -1022,7 +998,7 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Info,
+                        imageVector = Icons.Outlined.Info,
                         contentDescription = "Quote",
                         tint = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.size(20.dp)
@@ -1060,44 +1036,43 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    listOf(
-                        "Indigo" to Color(0xFF4F46E5),
-                        "Emerald" to Color(0xFF059669),
-                        "Amber" to Color(0xFFD97706),
-                        "Teal" to Color(0xFF0D9488)
-                    ).forEach { (name, dotColor) ->
-                        val isSelected = themeAccent == name
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .background(
-                                    if (isSelected) dotColor.copy(alpha = 0.12f) else Color.Transparent,
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                                .clickable { viewModel.setThemeAccent(name) }
-                                .border(
-                                    width = 1.5.dp,
-                                    color = if (isSelected) dotColor else MaterialTheme.colorScheme.outlineVariant,
-                                    shape = RoundedCornerShape(12.dp)
-                                )
-                                .padding(vertical = 8.dp, horizontal = 4.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(viewModel.availableThemes) { name ->
+                            val dotColor = AccentColors[name]?.get(0) ?: Color.Gray
+                            val isSelected = themeAccent == name
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        if (isSelected) dotColor.copy(alpha = 0.12f) else Color.Transparent,
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .clickable { viewModel.setThemeAccent(name) }
+                                    .border(
+                                        width = 1.5.dp,
+                                        color = if (isSelected) dotColor else MaterialTheme.colorScheme.outlineVariant,
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .padding(vertical = 8.dp, horizontal = 8.dp),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(10.dp)
-                                        .background(dotColor, shape = CircleShape)
-                                )
-                                Text(
-                                    text = name,
-                                    fontSize = 11.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) dotColor else MaterialTheme.colorScheme.onSurface
-                                )
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(10.dp)
+                                            .background(dotColor, shape = CircleShape)
+                                    )
+                                    Text(
+                                        text = name,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                }
                             }
                         }
                     }
@@ -1354,7 +1329,7 @@ fun StudyScreen(viewModel: PlannerViewModel) {
                         )
                     ) {
                         Icon(
-                            imageVector = if (pomodoroRunning) Icons.Default.PlayArrow else Icons.Default.PlayArrow,
+                            imageVector = if (pomodoroRunning) Icons.Outlined.PlayArrow else Icons.Outlined.PlayArrow,
                             contentDescription = if (pomodoroRunning) "Pause" else "Mulai"
                         )
                         Spacer(modifier = Modifier.width(6.dp))
@@ -1393,10 +1368,10 @@ fun StudyScreen(viewModel: PlannerViewModel) {
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         IconButton(onClick = { showAddSlotDialog = true }) {
-                            Icon(imageVector = Icons.Default.Add, contentDescription = "Tambah Slot Waktu")
+                            Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah Slot Waktu")
                         }
                         IconButton(onClick = { showAddScheduleDialog = true }) {
-                            Icon(imageVector = Icons.Default.List, contentDescription = "Tambah Pelajaran")
+                            Icon(imageVector = Icons.Outlined.List, contentDescription = "Tambah Pelajaran")
                         }
                     }
                 }
@@ -1497,7 +1472,7 @@ fun StudyScreen(viewModel: PlannerViewModel) {
                                         modifier = Modifier.size(24.dp)
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.Delete,
+                                            imageVector = Icons.Outlined.Delete,
                                             contentDescription = "Hapus Slot",
                                             tint = DangerRed.copy(alpha = 0.7f),
                                             modifier = Modifier.size(13.dp)
@@ -1549,7 +1524,7 @@ fun StudyScreen(viewModel: PlannerViewModel) {
                                                             .size(14.dp)
                                                     ) {
                                                         Icon(
-                                                            imageVector = Icons.Default.Close,
+                                                            imageVector = Icons.Outlined.Close,
                                                             contentDescription = "Hapus",
                                                             tint = DangerRed,
                                                             modifier = Modifier.size(10.dp)
@@ -1647,7 +1622,7 @@ fun StudyScreen(viewModel: PlannerViewModel) {
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = "Tambah Tugas")
+                    Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah Tugas")
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Tambah Tugas")
                 }
@@ -1741,7 +1716,7 @@ fun StudyScreen(viewModel: PlannerViewModel) {
                                     }
                                 }
                                 IconButton(onClick = { viewModel.deleteTask(task) }) {
-                                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Hapus Tugas", tint = DangerRed)
+                                    Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus Tugas", tint = DangerRed)
                                 }
                             }
                         }
@@ -1765,7 +1740,7 @@ fun StudyScreen(viewModel: PlannerViewModel) {
                 ) {
                     Text(text = "Catatan Belajar", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     IconButton(onClick = { showAddNoteDialog = true }) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = "Tambah Catatan")
+                        Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah Catatan")
                     }
                 }
 
@@ -1793,7 +1768,7 @@ fun StudyScreen(viewModel: PlannerViewModel) {
                                     ) {
                                         Text(text = note.title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                         IconButton(onClick = { viewModel.deleteNote(note) }, modifier = Modifier.size(24.dp)) {
-                                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Hapus", tint = DangerRed, modifier = Modifier.size(16.dp))
+                                            Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus", tint = DangerRed, modifier = Modifier.size(16.dp))
                                         }
                                     }
                                     Spacer(modifier = Modifier.height(4.dp))
@@ -2058,7 +2033,7 @@ fun WorkoutScreen(viewModel: PlannerViewModel) {
                 title = "Total Sesi",
                 value = "$totalSessions",
                 subtitle = "Sesi Olahraga",
-                icon = Icons.Default.PlayArrow,
+                icon = Icons.Outlined.PlayArrow,
                 modifier = Modifier.weight(1f),
                 badgeBg = MaterialTheme.colorScheme.primary
             )
@@ -2066,7 +2041,7 @@ fun WorkoutScreen(viewModel: PlannerViewModel) {
                 title = "Total Durasi",
                 value = "$totalDuration mnt",
                 subtitle = "Waktu Aktif",
-                icon = Icons.Default.Settings,
+                icon = Icons.Outlined.Settings,
                 modifier = Modifier.weight(1f),
                 badgeBg = MaterialTheme.colorScheme.secondary
             )
@@ -2074,7 +2049,7 @@ fun WorkoutScreen(viewModel: PlannerViewModel) {
                 title = "Total Kalori",
                 value = "$totalCalories",
                 subtitle = "Kalori Dibakar",
-                icon = Icons.Default.CheckCircle,
+                icon = Icons.Outlined.CheckCircle,
                 modifier = Modifier.weight(1f),
                 badgeBg = SuccessGreen
             )
@@ -2195,7 +2170,7 @@ fun WorkoutScreen(viewModel: PlannerViewModel) {
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                         ) {
-                            Icon(imageVector = Icons.Default.Warning, contentDescription = "Izin")
+                            Icon(imageVector = Icons.Outlined.Warning, contentDescription = "Izin")
                             Spacer(modifier = Modifier.width(6.dp))
                             Text("Izinkan Akses Sensor Gerak (Deteksi Langkah)", fontSize = 12.sp)
                         }
@@ -2210,7 +2185,7 @@ fun WorkoutScreen(viewModel: PlannerViewModel) {
                                 onClick = { showEditGoalDialog = true },
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Icon(imageVector = Icons.Default.Settings, contentDescription = "Edit Target")
+                                Icon(imageVector = Icons.Outlined.Settings, contentDescription = "Edit Target")
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("Edit Target", fontSize = 12.sp)
                             }
@@ -2258,7 +2233,7 @@ fun WorkoutScreen(viewModel: PlannerViewModel) {
                                 onClick = { showManualLogDialog = true },
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Icon(imageVector = Icons.Default.Edit, contentDescription = "Manual")
+                                Icon(imageVector = Icons.Outlined.Edit, contentDescription = "Manual")
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("Tambah Manual", fontSize = 12.sp)
                             }
@@ -2367,13 +2342,13 @@ fun WorkoutScreen(viewModel: PlannerViewModel) {
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     if (isGoalMet) {
-                                        Icon(imageVector = Icons.Default.CheckCircle, contentDescription = "Goal Met", tint = SuccessGreen, modifier = Modifier.size(16.dp))
+                                        Icon(imageVector = Icons.Outlined.CheckCircle, contentDescription = "Goal Met", tint = SuccessGreen, modifier = Modifier.size(16.dp))
                                     }
                                     IconButton(
                                         onClick = { viewModel.deleteStepLog(log) },
                                         modifier = Modifier.size(24.dp)
                                     ) {
-                                        Icon(imageVector = Icons.Default.Delete, contentDescription = "Hapus", tint = DangerRed.copy(alpha = 0.8f), modifier = Modifier.size(14.dp))
+                                        Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus", tint = DangerRed.copy(alpha = 0.8f), modifier = Modifier.size(14.dp))
                                     }
                                 }
                             }
@@ -2396,7 +2371,7 @@ fun WorkoutScreen(viewModel: PlannerViewModel) {
                 ) {
                     Text(text = "Log Aktivitas Olahraga", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Button(onClick = { showAddWorkoutDialog = true }, shape = RoundedCornerShape(12.dp)) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = "Log Baru")
+                        Icon(imageVector = Icons.Outlined.Add, contentDescription = "Log Baru")
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Log Baru")
                     }
@@ -2445,7 +2420,7 @@ fun WorkoutScreen(viewModel: PlannerViewModel) {
                                         Text(text = dateStr, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
                                     }
                                     IconButton(onClick = { viewModel.deleteWorkoutLog(log) }) {
-                                        Icon(imageVector = Icons.Default.Delete, contentDescription = "Hapus Log", tint = DangerRed)
+                                        Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus Log", tint = DangerRed)
                                     }
                                 }
                             }
@@ -2713,7 +2688,7 @@ fun SavingScreen(viewModel: PlannerViewModel) {
                 ) {
                     Text(text = "Target Tabungan", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Button(onClick = { showAddGoalDialog = true }, shape = RoundedCornerShape(12.dp)) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = "Tambah")
+                        Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah")
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Tambah")
                     }
@@ -2757,10 +2732,10 @@ fun SavingScreen(viewModel: PlannerViewModel) {
                                                 goalTarget = goal.targetAmount.toString()
                                                 goalCurrent = goal.currentAmount.toString()
                                             }, modifier = Modifier.size(32.dp)) {
-                                                Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                                Icon(imageVector = Icons.Outlined.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                                             }
                                             IconButton(onClick = { viewModel.deleteSavingGoal(goal) }, modifier = Modifier.size(32.dp)) {
-                                                Icon(imageVector = Icons.Default.Delete, contentDescription = "Hapus", tint = DangerRed, modifier = Modifier.size(18.dp))
+                                                Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus", tint = DangerRed, modifier = Modifier.size(18.dp))
                                             }
                                         }
                                     }
@@ -2804,20 +2779,65 @@ fun SavingScreen(viewModel: PlannerViewModel) {
     // DIALOG: ADD SAVING GOAL
     if (showAddGoalDialog) {
         Dialog(onDismissRequest = { showAddGoalDialog = false }) {
-            Card(shape = RoundedCornerShape(20.dp), modifier = Modifier.padding(16.dp)) {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.padding(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Tambah Target Tabungan", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    OutlinedTextField(value = goalName, onValueChange = { goalName = it }, label = { Text("Nama Target (cth: Beli Laptop)") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = goalTarget, onValueChange = { goalTarget = it }, label = { Text("Nominal Target (Rp)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = goalCurrent, onValueChange = { goalCurrent = it }, label = { Text("Terkumpul (Rp)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Outlined.Savings, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Text("Tambah Target Tabungan", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.primary)
+                    }
+                    OutlinedTextField(
+                        value = goalName,
+                        onValueChange = { goalName = it },
+                        label = { Text("Nama Target") },
+                        leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
+                    OutlinedTextField(
+                        value = goalTarget,
+                        onValueChange = { if (it.isEmpty() || it.replace(".", "").all { char -> char.isDigit() }) goalTarget = formatAsCurrency(it) },
+                        label = { Text("Nominal Target (Rp)") },
+                        leadingIcon = { Icon(Icons.Outlined.AttachMoney, contentDescription = null) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
+                    OutlinedTextField(
+                        value = goalCurrent,
+                        onValueChange = { if (it.isEmpty() || it.replace(".", "").all { char -> char.isDigit() }) goalCurrent = formatAsCurrency(it) },
+                        label = { Text("Terkumpul (Rp)") },
+                        leadingIcon = { Icon(Icons.Outlined.AccountBalanceWallet, contentDescription = null) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
                     ) {
                         TextButton(onClick = { showAddGoalDialog = false }) { Text("Batal") }
                         Button(onClick = {
-                            val trg = goalTarget.toLongOrNull() ?: 0L
-                            val cur = goalCurrent.toLongOrNull() ?: 0L
+                            val trg = goalTarget.replace(".", "").toDoubleOrNull() ?: 0.0
+                            val cur = goalCurrent.replace(".", "").toDoubleOrNull() ?: 0.0
                             viewModel.addSavingGoal(goalName, trg, cur)
                             goalName = ""
                             goalTarget = ""
@@ -2833,20 +2853,59 @@ fun SavingScreen(viewModel: PlannerViewModel) {
     // DIALOG: EDIT SAVING GOAL
     if (editTargetGoal != null) {
         Dialog(onDismissRequest = { editTargetGoal = null }) {
-            Card(shape = RoundedCornerShape(20.dp), modifier = Modifier.padding(16.dp)) {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.padding(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Edit Target Tabungan", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    OutlinedTextField(value = goalName, onValueChange = { goalName = it }, label = { Text("Nama Target") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = goalTarget, onValueChange = { goalTarget = it }, label = { Text("Nominal Target (Rp)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = goalCurrent, onValueChange = { goalCurrent = it }, label = { Text("Terkumpul (Rp)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                    Text("Edit Target Tabungan", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.primary)
+                    OutlinedTextField(
+                        value = goalName,
+                        onValueChange = { goalName = it },
+                        label = { Text("Nama Target") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
+                    OutlinedTextField(
+                        value = goalTarget,
+                        onValueChange = { if (it.isEmpty() || it.replace(".", "").all { char -> char.isDigit() }) goalTarget = formatAsCurrency(it) },
+                        label = { Text("Nominal Target (Rp)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
+                    OutlinedTextField(
+                        value = goalCurrent,
+                        onValueChange = { if (it.isEmpty() || it.replace(".", "").all { char -> char.isDigit() }) goalCurrent = formatAsCurrency(it) },
+                        label = { Text("Terkumpul (Rp)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
                     ) {
                         TextButton(onClick = { editTargetGoal = null }) { Text("Batal") }
                         Button(onClick = {
-                            val trg = goalTarget.toLongOrNull() ?: 0L
-                            val cur = goalCurrent.toLongOrNull() ?: 0L
+                            val trg = goalTarget.replace(".", "").toDoubleOrNull() ?: 0.0
+                            val cur = goalCurrent.replace(".", "").toDoubleOrNull() ?: 0.0
                             editTargetGoal?.let {
                                 viewModel.editSavingGoal(it, goalName, trg, cur)
                             }
@@ -2974,13 +3033,13 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true,
-                leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = "Search") }
+                leadingIcon = { Icon(imageVector = Icons.Outlined.Search, contentDescription = "Search") }
             )
             Button(
                 onClick = { showAddDonghuaDialog = true },
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "Tambah")
+                Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah")
                 Spacer(modifier = Modifier.width(4.dp))
                 Text("Tambah")
             }
@@ -3097,7 +3156,7 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     IconButton(onClick = { viewModel.toggleDonghuaFavorite(item) }) {
                                         Icon(
-                                            imageVector = if (item.isFavorite) Icons.Default.Star else Icons.Default.Star,
+                                            imageVector = if (item.isFavorite) Icons.Outlined.Star else Icons.Outlined.Star,
                                             contentDescription = "Favorit",
                                             tint = if (item.isFavorite) WarningAmber else MaterialTheme.colorScheme.outline
                                         )
@@ -3111,10 +3170,10 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
                                         donghuaRating = item.rating
                                         donghuaFav = item.isFavorite
                                     }) {
-                                        Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
+                                        Icon(imageVector = Icons.Outlined.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
                                     }
                                     IconButton(onClick = { viewModel.deleteDonghua(item) }) {
-                                        Icon(imageVector = Icons.Default.Delete, contentDescription = "Hapus", tint = DangerRed)
+                                        Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus", tint = DangerRed)
                                     }
                                 }
                             }
@@ -3152,7 +3211,7 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
                             Row {
                                 for (i in 1..5) {
                                     Icon(
-                                        imageVector = Icons.Default.Star,
+                                        imageVector = Icons.Outlined.Star,
                                         contentDescription = "Rating Star",
                                         tint = if (i <= item.rating) WarningAmber else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
                                         modifier = Modifier.size(16.dp)
@@ -3167,7 +3226,7 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), contentColor = MaterialTheme.colorScheme.primary),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
-                                Icon(imageVector = Icons.Default.Add, contentDescription = "Tambah Episode")
+                                Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah Episode")
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text("Nonton 1 Episode Lagi", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                             }
@@ -3212,7 +3271,7 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
                         for (i in 1..5) {
                             IconButton(onClick = { donghuaRating = i }, modifier = Modifier.size(32.dp)) {
                                 Icon(
-                                    imageVector = Icons.Default.Star,
+                                    imageVector = Icons.Outlined.Star,
                                     contentDescription = "Rating $i",
                                     tint = if (i <= donghuaRating) WarningAmber else MaterialTheme.colorScheme.outline
                                 )
@@ -3285,7 +3344,7 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
                         for (i in 1..5) {
                             IconButton(onClick = { donghuaRating = i }, modifier = Modifier.size(32.dp)) {
                                 Icon(
-                                    imageVector = Icons.Default.Star,
+                                    imageVector = Icons.Outlined.Star,
                                     contentDescription = "Rating $i",
                                     tint = if (i <= donghuaRating) WarningAmber else MaterialTheme.colorScheme.outline
                                 )
@@ -3374,6 +3433,25 @@ fun BudgetScreen(viewModel: PlannerViewModel) {
     // Dynamic verification of Notification Listener permission status
     val context = LocalContext.current
     var isDanaIntegrated by remember { mutableStateOf(false) }
+
+    var hasNotificationPermission by remember {
+        mutableStateOf(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                androidx.core.content.ContextCompat.checkSelfPermission(
+                    context,
+                    android.Manifest.permission.POST_NOTIFICATIONS
+                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            } else {
+                true
+            }
+        )
+    }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasNotificationPermission = isGranted
+    }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -3546,7 +3624,8 @@ fun BudgetScreen(viewModel: PlannerViewModel) {
                             label = { Text("Batas Limit (IDR)") },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
-                            singleLine = true
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                         )
 
                         Row(
@@ -3560,7 +3639,7 @@ fun BudgetScreen(viewModel: PlannerViewModel) {
                             Spacer(modifier = Modifier.width(8.dp))
                             Button(
                                 onClick = {
-                                    val amount = tempLimitText.toLongOrNull() ?: 0L
+                                    val amount = tempLimitText.replace(',', '.').toDoubleOrNull() ?: 0.0
                                     viewModel.updateBudgetLimit(amount)
                                     showEditLimitDialog = false
                                 },
@@ -3607,7 +3686,7 @@ fun BudgetScreen(viewModel: PlannerViewModel) {
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
-                                    imageVector = Icons.Default.CheckCircle,
+                                    imageVector = Icons.Outlined.CheckCircle,
                                     contentDescription = "Wallet",
                                     tint = if (isDanaIntegrated) SuccessGreen else MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(22.dp)
@@ -3666,55 +3745,90 @@ fun BudgetScreen(viewModel: PlannerViewModel) {
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
-                        Icon(imageVector = Icons.Default.Settings, contentDescription = "Aktifkan")
+                        Icon(imageVector = Icons.Outlined.Settings, contentDescription = "Aktifkan")
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Aktifkan Sinkronisasi DANA")
                     }
-                } else {
-                    Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                    
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = "Sandbox Pengujian (Kirim Notifikasi Demo):",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = {
-                                    sendTestDanaNotification(
-                                        context = context,
-                                        text = "Pembayaran berhasil sebesar Rp 50.000 ke Tokopedia menggunakan saldo DANA."
-                                    )
-                                },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, DangerRed.copy(alpha = 0.5f))
-                            ) {
-                                Icon(imageVector = Icons.Default.PlayArrow, contentDescription = "Test Keluar", tint = DangerRed, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Test Rp50K Keluar", fontSize = 11.sp, color = DangerRed)
-                            }
+                }
 
-                            Button(
-                                onClick = {
-                                    sendTestDanaNotification(
-                                        context = context,
-                                        text = "Kamu menerima uang sebesar Rp 150.000 dari BUDI UTOMO melalui transfer DANA."
+                Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Sandbox Pengujian (Kirim Notifikasi Demo):",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    if (!isDanaIntegrated) {
+                        Text(
+                            text = "💡 Mode Simulasi Aktif: Klik tombol di bawah untuk langsung menyimulasikan deteksi otomatis DANA.",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            lineHeight = 15.sp,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
+                                    notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                }
+                                
+                                sendTestDanaNotification(
+                                    context = context,
+                                    text = "Pembayaran berhasil sebesar Rp 50.000 ke Tokopedia menggunakan saldo DANA."
+                                )
+
+                                if (!isDanaIntegrated) {
+                                    viewModel.addTransaction(
+                                        desc = "Pembayaran DANA (Otomatis)",
+                                        amount = 50000.0,
+                                        type = "expense"
                                     )
-                                },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen)
-                            ) {
-                                Icon(imageVector = Icons.Default.Add, contentDescription = "Test Masuk", tint = Color.White, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Test Rp150K Masuk", fontSize = 11.sp, color = Color.White)
-                            }
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, DangerRed.copy(alpha = 0.5f))
+                        ) {
+                            Icon(imageVector = Icons.Outlined.PlayArrow, contentDescription = "Test Keluar", tint = DangerRed, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Test Rp50K Keluar", fontSize = 11.sp, color = DangerRed)
+                        }
+
+                        Button(
+                            onClick = {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
+                                    notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                }
+                                
+                                sendTestDanaNotification(
+                                    context = context,
+                                    text = "Kamu menerima uang sebesar Rp 150.000 dari BUDI UTOMO melalui transfer DANA."
+                                )
+
+                                if (!isDanaIntegrated) {
+                                    viewModel.addTransaction(
+                                        desc = "DANA Masuk (Otomatis)",
+                                        amount = 150000.0,
+                                        type = "income"
+                                    )
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen)
+                        ) {
+                            Icon(imageVector = Icons.Outlined.Add, contentDescription = "Test Masuk", tint = Color.White, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Test Rp150K Masuk", fontSize = 11.sp, color = Color.White)
                         }
                     }
                 }
@@ -3736,7 +3850,7 @@ fun BudgetScreen(viewModel: PlannerViewModel) {
                 ) {
                     Text(text = "Riwayat Transaksi", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Button(onClick = { showAddTxDialog = true }, shape = RoundedCornerShape(12.dp)) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = "Tambah")
+                        Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah")
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Transaksi")
                     }
@@ -3749,7 +3863,7 @@ fun BudgetScreen(viewModel: PlannerViewModel) {
                     value = txSearchQuery,
                     onValueChange = { txSearchQuery = it },
                     placeholder = { Text("Cari transaksi...") },
-                    leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = "Cari") },
+                    leadingIcon = { Icon(imageVector = Icons.Outlined.Search, contentDescription = "Cari") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true
@@ -3823,7 +3937,7 @@ fun BudgetScreen(viewModel: PlannerViewModel) {
                                             color = if (tx.type == "income") SuccessGreen else DangerRed
                                         )
                                         IconButton(onClick = { viewModel.deleteTransaction(tx) }) {
-                                            Icon(imageVector = Icons.Default.Delete, contentDescription = "Hapus", tint = DangerRed)
+                                            Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus", tint = DangerRed)
                                         }
                                     }
                                 }
@@ -3838,11 +3952,43 @@ fun BudgetScreen(viewModel: PlannerViewModel) {
     // DIALOG: ADD TRANSACTION
     if (showAddTxDialog) {
         Dialog(onDismissRequest = { showAddTxDialog = false }) {
-            Card(shape = RoundedCornerShape(20.dp), modifier = Modifier.padding(16.dp)) {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.padding(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Tambah Transaksi Baru", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    OutlinedTextField(value = txDesc, onValueChange = { txDesc = it }, label = { Text("Keterangan (cth: Gaji Bulanan)") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = txAmount, onValueChange = { txAmount = it }, label = { Text("Jumlah Nominal (Rp)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(Icons.Outlined.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Text("Tambah Transaksi Baru", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.primary)
+                    }
+                    OutlinedTextField(
+                        value = txDesc,
+                        onValueChange = { txDesc = it },
+                        label = { Text("Keterangan") },
+                        leadingIcon = { Icon(Icons.Outlined.ListAlt, contentDescription = null) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
+                    OutlinedTextField(
+                        value = txAmount,
+                        onValueChange = { if (it.isEmpty() || it.replace(".", "").all { char -> char.isDigit() }) txAmount = formatAsCurrency(it) },
+                        label = { Text("Jumlah Nominal (Rp)") },
+                        leadingIcon = { Icon(Icons.Outlined.AttachMoney, contentDescription = null) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                        )
+                    )
 
                     Text("Pilih Tipe Transaksi", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -3864,7 +4010,7 @@ fun BudgetScreen(viewModel: PlannerViewModel) {
                     ) {
                         TextButton(onClick = { showAddTxDialog = false }) { Text("Batal") }
                         Button(onClick = {
-                            val amt = txAmount.toLongOrNull() ?: 0L
+                            val amt = txAmount.replace(".", "").toDoubleOrNull() ?: 0.0
                             viewModel.addTransaction(txDesc, amt, txType)
                             txDesc = ""
                             txAmount = ""
@@ -4118,3 +4264,121 @@ fun ChartScreen(viewModel: PlannerViewModel) {
         }
     }
 }
+
+@Composable
+fun GreetingBanner(
+    profileName: String,
+    profileBio: String,
+    avatarIndex: Int,
+    onEditClick: () -> Unit
+) {
+    var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    
+    LaunchedEffect(Unit) {
+        while (true) {
+            currentTime = System.currentTimeMillis()
+            delay(1000) 
+        }
+    }
+
+    val tz = TimeZone.getTimeZone("Asia/Jakarta")
+    val cal = remember(currentTime) {
+        Calendar.getInstance(tz).apply { timeInMillis = currentTime }
+    }
+    val hr = cal.get(Calendar.HOUR_OF_DAY)
+    val greeting = when (hr) {
+        in 4..10 -> "Selamat Pagi \uD83C\uDF05"
+        in 11..14 -> "Selamat Siang ☀️"
+        in 15..18 -> "Selamat Sore \uD83C\uDF07"
+        else -> "Selamat Malam \uD83C\uDF19"
+    }
+    val timeFmt = SimpleDateFormat("HH:mm:ss", Locale("id", "ID")).apply { timeZone = tz }
+    val dateFmt = SimpleDateFormat("EEEE, d MMMM yyyy", Locale("id", "ID")).apply { timeZone = tz }
+    val currentTimeStr = timeFmt.format(cal.time)
+    val todayDate = dateFmt.format(cal.time)
+
+    GlassyCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+        accentColor = Color.White
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = 0.2f),
+                    modifier = Modifier.size(60.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        val avatarEmoji = when (avatarIndex) {
+                            1 -> "🧠"
+                            2 -> "🏃‍♂️"
+                            3 -> "💰"
+                            4 -> "🐉"
+                            else -> "💻"
+                        }
+                        Text(text = avatarEmoji, fontSize = 32.sp)
+                    }
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "$greeting, $profileName!",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        IconButton(
+                            onClick = onEditClick,
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Settings,
+                                contentDescription = "Edit Profil",
+                                tint = Color.White.copy(alpha = 0.8f),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = profileBio,
+                        fontSize = 11.sp,
+                        color = Color.White.copy(alpha = 0.85f),
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Outlined.Home,
+                            contentDescription = "Kalender",
+                            tint = Color.White.copy(alpha = 0.6f),
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "$todayDate • $currentTimeStr",
+                            fontSize = 11.sp,
+                            color = Color.White.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
