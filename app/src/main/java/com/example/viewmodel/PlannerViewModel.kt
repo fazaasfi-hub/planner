@@ -14,7 +14,10 @@ enum class Screen {
     Dashboard, Study, Workout, Saving, Donghua, Chart, Budget
 }
 
-class PlannerViewModel(private val repository: PlannerRepository) : ViewModel() {
+class PlannerViewModel(
+    private val repository: PlannerRepository,
+    private val prefManager: PreferenceManager
+) : ViewModel() {
 
     private val weatherService = WeatherService()
 
@@ -133,7 +136,7 @@ class PlannerViewModel(private val repository: PlannerRepository) : ViewModel() 
     }
 
     // 3. Accent Colors Themes Choice
-    private val _themeAccent = MutableStateFlow("Indigo")
+    private val _themeAccent = MutableStateFlow(prefManager.getThemeAccent())
     val themeAccent: StateFlow<String> = _themeAccent.asStateFlow()
     
     val availableThemes = listOf(
@@ -144,6 +147,7 @@ class PlannerViewModel(private val repository: PlannerRepository) : ViewModel() 
 
     fun setThemeAccent(accent: String) {
         _themeAccent.value = accent
+        prefManager.setThemeAccent(accent)
         showToast("Aksen tema diganti ke $accent \uD83C\uDFA8")
     }
 
@@ -219,6 +223,23 @@ class PlannerViewModel(private val repository: PlannerRepository) : ViewModel() 
                 }
             }
         }
+
+        // Proactive deadline check on startup
+        viewModelScope.launch {
+            val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+            repository.allTasks.collect { tasks ->
+                tasks.forEach { task ->
+                    if (!task.isDone && !task.isNotified && task.deadline == today) {
+                        _deadlineEvent.emit(task)
+                        // Mark as notified in DB to avoid double trigger
+                        repository.insertTask(task.copy(isNotified = true))
+                    }
+                }
+            }
+        }
+
+        // Initial weather fetch
+        searchWeather(prefManager.getLastCity())
     }
 
     fun navigateTo(screen: Screen) {
@@ -243,6 +264,7 @@ class PlannerViewModel(private val repository: PlannerRepository) : ViewModel() 
             val info = weatherService.fetchWeather(city)
             if (info != null) {
                 _weatherInfo.value = info
+                prefManager.setLastCity(city)
             } else {
                 _weatherError.value = "Kota tidak ditemukan"
                 showToast("Gagal memuat cuaca")
@@ -705,11 +727,14 @@ class PlannerViewModel(private val repository: PlannerRepository) : ViewModel() 
     }
 }
 
-class PlannerViewModelFactory(private val repository: PlannerRepository) : ViewModelProvider.Factory {
+class PlannerViewModelFactory(
+    private val repository: PlannerRepository,
+    private val prefManager: PreferenceManager
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(PlannerViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return PlannerViewModel(repository) as T
+            return PlannerViewModel(repository, prefManager) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

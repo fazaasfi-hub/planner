@@ -20,6 +20,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.data.PlannerDatabase
 import com.example.data.PlannerRepository
+import com.example.data.PreferenceManager
 import com.example.ui.DeadlineWorker
 import com.example.ui.PlannerApp
 import com.example.ui.theme.MyApplicationTheme
@@ -30,6 +31,7 @@ class MainActivity : ComponentActivity() {
 
   private lateinit var database: PlannerDatabase
   private lateinit var repository: PlannerRepository
+  private lateinit var prefManager: PreferenceManager
 
   private val requestPermissionLauncher = registerForActivityResult(
     ActivityResultContracts.RequestPermission()
@@ -51,6 +53,7 @@ class MainActivity : ComponentActivity() {
     database = PlannerDatabase.getDatabase(applicationContext)
 
     repository = PlannerRepository(database.plannerDao())
+    prefManager = com.example.data.PreferenceManager(applicationContext)
     
     scheduleBackgroundWork()
 
@@ -61,7 +64,7 @@ class MainActivity : ComponentActivity() {
 
       // Instantiate ViewModel with Simple Factory Injection
       val viewModel: PlannerViewModel by viewModels {
-        PlannerViewModelFactory(repository)
+        PlannerViewModelFactory(repository, prefManager)
       }
 
       val themeAccent by viewModel.themeAccent.collectAsState(initial = "Indigo")

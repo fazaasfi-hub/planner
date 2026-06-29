@@ -21,8 +21,8 @@ class WeatherService {
 
     suspend fun fetchWeather(city: String): WeatherInfo? = withContext(Dispatchers.IO) {
         try {
-            // 1. Geocode search
-            val geoUrl = "https://geocoding-api.open-meteo.com/v1/search?name=${URLEncoder.encode(city, "UTF-8")}&count=1&language=id&format=json"
+            // 1. Geocode search - increased count to 5 and will try to prioritize Indonesian results if multiple found
+            val geoUrl = "https://geocoding-api.open-meteo.com/v1/search?name=${URLEncoder.encode(city, "UTF-8")}&count=5&language=id&format=json"
             val geoRequest = Request.Builder().url(geoUrl).build()
             val geoResponse = client.newCall(geoRequest).execute()
             if (!geoResponse.isSuccessful) return@withContext null
@@ -34,14 +34,23 @@ class WeatherService {
             val results = geoJson.getJSONArray("results")
             if (results.length() == 0) return@withContext null
             
-            val firstResult = results.getJSONObject(0)
+            // Prioritize Indonesia (ID) if searching from Indonesia
+            var firstResult = results.getJSONObject(0)
+            for (i in 0 until results.length()) {
+                val res = results.getJSONObject(i)
+                if (res.optString("country_code", "").equals("ID", ignoreCase = true)) {
+                    firstResult = res
+                    break
+                }
+            }
+            
             val name = firstResult.optString("name", city)
             val country = firstResult.optString("country", "")
             val lat = firstResult.getDouble("latitude")
             val lon = firstResult.getDouble("longitude")
 
-            // 2. Fetch forecast
-            val forecastUrl = "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current_weather=true&hourly=relativehumidity_2m,weathercode&timezone=auto&forecast_days=1"
+            // 2. Fetch current weather using the modern 'current' parameter
+            val forecastUrl = "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto"
             val forecastRequest = Request.Builder().url(forecastUrl).build()
             val forecastResponse = client.newCall(forecastRequest).execute()
             if (!forecastResponse.isSuccessful) return@withContext null
@@ -49,22 +58,13 @@ class WeatherService {
             val forecastBody = forecastResponse.body?.string() ?: return@withContext null
             val forecastJson = JSONObject(forecastBody)
             
-            val currentWeather = forecastJson.getJSONObject("current_weather")
-            val temperature = currentWeather.getDouble("temperature")
-            val weatherCode = currentWeather.getInt("weathercode")
-            val windspeed = currentWeather.optDouble("windspeed", 0.0)
-
-            // Parse humidity from hourly
-            var humidity = 50
-            if (forecastJson.has("hourly")) {
-                val hourly = forecastJson.getJSONObject("hourly")
-                if (hourly.has("relativehumidity_2m")) {
-                    val humidities = hourly.getJSONArray("relativehumidity_2m")
-                    if (humidities.length() > 0) {
-                        humidity = humidities.getInt(0) // Default to first hour
-                    }
-                }
-            }
+            if (!forecastJson.has("current")) return@withContext null
+            val current = forecastJson.getJSONObject("current")
+            
+            val temperature = current.getDouble("temperature_2m")
+            val weatherCode = current.getInt("weather_code")
+            val windspeed = current.optDouble("wind_speed_10m", 0.0)
+            val humidity = current.optInt("relative_humidity_2m", 50)
 
             WeatherInfo(
                 cityName = name,

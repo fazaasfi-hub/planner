@@ -37,7 +37,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import androidx.compose.ui.platform.LocalContext
 import android.media.RingtoneManager
 import com.example.ui.NotificationHelper
 import com.example.ui.theme.*
@@ -58,6 +57,9 @@ import android.hardware.SensorManager
 import android.content.pm.PackageManager
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
+import java.util.*
+import java.text.SimpleDateFormat
+import com.example.data.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.core.app.NotificationCompat
@@ -66,15 +68,10 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.FastOutLinearInEasing
-import com.example.data.*
-import com.example.ui.theme.*
 import com.example.viewmodel.PlannerViewModel
 import com.example.viewmodel.Screen
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
-import java.text.DecimalFormat
-import java.text.SimpleDateFormat
-import java.util.*
 
 // Helper for currency formatting
 fun formatRupiah(amount: Double): String {
@@ -167,6 +164,34 @@ fun GlassyCard(
         colors = CardDefaults.cardColors(containerColor = baseColor),
         border = finalBorder,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        content()
+    }
+}
+
+@Composable
+fun StaggeredEntrance(
+    index: Int,
+    content: @Composable () -> Unit
+) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(index * 100L + 150L) // Lebih pelan delay per item
+        visible = true
+    }
+    
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(1000, easing = LinearOutSlowInEasing)) + 
+                slideInVertically(
+                    initialOffsetY = { it / 6 }, 
+                    animationSpec = tween(1000, easing = LinearOutSlowInEasing)
+                ) +
+                scaleIn(
+                    initialScale = 0.95f,
+                    animationSpec = tween(1000, easing = LinearOutSlowInEasing)
+                ),
+        exit = fadeOut(animationSpec = tween(400))
     ) {
         content()
     }
@@ -458,13 +483,13 @@ fun PlannerApp(viewModel: PlannerViewModel, isDarkTheme: Boolean, onThemeToggle:
                 AnimatedContent(
                     targetState = currentScreen,
                     transitionSpec = {
-                        val duration = 280
-                        (slideInHorizontally(animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)) { width -> width / 4 } +
-                         fadeIn(animationSpec = tween(duration, easing = LinearOutSlowInEasing)) +
-                         scaleIn(initialScale = 0.96f, animationSpec = tween(duration, easing = LinearOutSlowInEasing))) togetherWith
-                        (slideOutHorizontally(animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow)) { width -> -width / 4 } +
-                         fadeOut(animationSpec = tween(duration, easing = FastOutLinearInEasing)) +
-                         scaleOut(targetScale = 0.96f, animationSpec = tween(duration, easing = FastOutLinearInEasing)))
+                        val duration = 800
+                        val easing = androidx.compose.animation.core.FastOutSlowInEasing
+                        (slideInVertically(animationSpec = tween(duration, easing = easing)) { height -> height / 8 } +
+                         fadeIn(animationSpec = tween(duration, easing = easing)) +
+                         scaleIn(initialScale = 0.92f, animationSpec = tween(duration, easing = easing))) togetherWith
+                        (fadeOut(animationSpec = tween(duration / 2, easing = androidx.compose.animation.core.FastOutLinearInEasing)) +
+                         scaleOut(targetScale = 0.96f, animationSpec = tween(duration / 2, easing = androidx.compose.animation.core.FastOutLinearInEasing)))
                     },
                     label = "ScreenTransition"
                 ) { target ->
@@ -576,12 +601,14 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // GREETING BANNER WITH PROFILE CUSTOMIZATION
-        GreetingBanner(
-            profileName = profileName,
-            profileBio = profileBio,
-            avatarIndex = avatarIndex,
-            onEditClick = { showEditProfileDialog = true }
-        )
+        StaggeredEntrance(index = 0) {
+            GreetingBanner(
+                profileName = profileName,
+                profileBio = profileBio,
+                avatarIndex = avatarIndex,
+                onEditClick = { showEditProfileDialog = true }
+            )
+        }
 
         // REST OF THE UI...
 
@@ -677,116 +704,136 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
         }
 
         // QUICK ACTIONS
-        Text(text = "Akses Cepat", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(onClick = { viewModel.navigateTo(Screen.Study) }) {
-                Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tugas")
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Tugas Baru")
-            }
-            Button(onClick = { viewModel.navigateTo(Screen.Workout) }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)) {
-                Icon(imageVector = Icons.Outlined.FitnessCenter, contentDescription = "Olahraga")
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Olahraga")
-            }
-            Button(onClick = { viewModel.navigateTo(Screen.Donghua) }, colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen)) {
-                Icon(imageVector = Icons.Outlined.Movie, contentDescription = "Donghua")
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Donghua")
-            }
-            Button(onClick = { viewModel.navigateTo(Screen.Saving) }, colors = ButtonDefaults.buttonColors(containerColor = WarningAmber)) {
-                Icon(imageVector = Icons.Outlined.Savings, contentDescription = "Nabung")
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Tabungan")
+        StaggeredEntrance(index = 1) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = "Akses Cepat", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(onClick = { viewModel.navigateTo(Screen.Study) }) {
+                        Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tugas")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Tugas Baru")
+                    }
+                    Button(onClick = { viewModel.navigateTo(Screen.Workout) }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)) {
+                        Icon(imageVector = Icons.Outlined.FitnessCenter, contentDescription = "Olahraga")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Olahraga")
+                    }
+                    Button(onClick = { viewModel.navigateTo(Screen.Donghua) }, colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen)) {
+                        Icon(imageVector = Icons.Outlined.Movie, contentDescription = "Donghua")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Donghua")
+                    }
+                    Button(onClick = { viewModel.navigateTo(Screen.Saving) }, colors = ButtonDefaults.buttonColors(containerColor = WarningAmber)) {
+                        Icon(imageVector = Icons.Outlined.Savings, contentDescription = "Nabung")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Tabungan")
+                    }
+                }
             }
         }
 
         // WEATHER CARD
-        GlassyCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Search,
-                        contentDescription = "Weather Icon",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    OutlinedTextField(
-                        value = cityQuery,
-                        onValueChange = { cityQuery = it },
-                        placeholder = { Text("Masukkan kota...") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent
-                        )
-                    )
-                    Button(
-                        onClick = { viewModel.searchWeather(cityQuery) },
-                        enabled = !weatherLoading,
-                        shape = RoundedCornerShape(12.dp)
+        StaggeredEntrance(index = 2) {
+            GlassyCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        if (weatherLoading) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
-                        } else {
-                            Text("Cari")
+                        Icon(
+                            imageVector = Icons.Outlined.Search,
+                            contentDescription = "Weather Icon",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        OutlinedTextField(
+                            value = cityQuery,
+                            onValueChange = { cityQuery = it },
+                            placeholder = { Text("Masukkan kota...") },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent
+                            )
+                        )
+                        Button(
+                            onClick = { viewModel.searchWeather(cityQuery) },
+                            enabled = !weatherLoading,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            if (weatherLoading) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color.White)
+                            } else {
+                                Text("Cari")
+                            }
                         }
                     }
-                }
 
-                weatherInfo?.let { info ->
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "${info.cityName}, ${info.country}",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp
-                            )
-                            Text(
-                                text = when (info.weatherCode) {
-                                    0 -> "Cerah ☀️"
-                                    1 -> "Cerah Berawan 🌤️"
-                                    2 -> "Berawan ⛅"
-                                    3 -> "Berawan Tebal ☁️"
-                                    in 45..48 -> "Kabut 🌫️"
-                                    in 51..55 -> "Gerimis 🌧️"
-                                    in 61..65 -> "Hujan 🌧️"
-                                    in 71..77 -> "Salju ❄️"
-                                    in 80..82 -> "Hujan Lebat ⛈️"
-                                    else -> "Badai ⚡"
-                                },
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = "${info.temperature}°C",
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(text = "💧 ${info.humidity}%", fontSize = 11.sp)
-                                Text(text = "💨 ${info.windspeed} km/j", fontSize = 11.sp)
+                    weatherInfo?.let { info ->
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "${info.cityName}, ${info.country}",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    IconButton(
+                                        onClick = { viewModel.searchWeather(info.cityName) },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Refresh,
+                                            contentDescription = "Refresh",
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.secondary
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = when (info.weatherCode) {
+                                        0 -> "Cerah ☀️"
+                                        1 -> "Cerah Berawan 🌤️"
+                                        2 -> "Berawan ⛅"
+                                        3 -> "Berawan Tebal ☁️"
+                                        in 45..48 -> "Kabut 🌫️"
+                                        in 51..55 -> "Gerimis 🌧️"
+                                        in 61..65 -> "Hujan 🌧️"
+                                        in 71..77 -> "Salju ❄️"
+                                        in 80..82 -> "Hujan Lebat ⛈️"
+                                        else -> "Badai ⚡"
+                                    },
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = "${info.temperature}°C",
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(text = "💧 ${info.humidity}%", fontSize = 11.sp)
+                                    Text(text = "💨 ${info.windspeed} km/j", fontSize = 11.sp)
+                                }
                             }
                         }
                     }
@@ -795,283 +842,311 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
         }
 
         // STATS SUMMARY CARDS
-        Text(text = "Rangkuman Aktivitas", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatCardPremium(
-                    title = "Mata Pelajaran",
-                    value = "$totalSubjects",
-                    subtitle = "$studyHours jam/minggu",
-                    icon = Icons.Outlined.List,
-                    modifier = Modifier.weight(1f),
-                    badgeBg = MaterialTheme.colorScheme.primary
-                )
-                StatCardPremium(
-                    title = "Total Tugas",
-                    value = "$totalTasks",
-                    subtitle = "$doneTasks selesai ($tasksPct%)",
-                    icon = Icons.Outlined.List,
-                    modifier = Modifier.weight(1f),
-                    badgeBg = MaterialTheme.colorScheme.secondary
-                )
-            }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatCardPremium(
-                    title = "Olahraga",
-                    value = "$totalWorkout",
-                    subtitle = "${totalCalories} kalori",
-                    icon = Icons.Outlined.FitnessCenter,
-                    modifier = Modifier.weight(1f),
-                    badgeBg = SuccessGreen
-                )
-                StatCardPremium(
-                    title = "Donghua",
-                    value = "$totalDonghua",
-                    subtitle = "$watchingDonghua tonton · $finishedDonghua selesai",
-                    icon = Icons.Outlined.Movie,
-                    modifier = Modifier.weight(1f),
-                    badgeBg = WarningAmber
-                )
-            }
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StatCardPremium(
-                    title = "Tabungan",
-                    value = formatRupiah(totalSavingsAmount),
-                    subtitle = "$savingsPct% dari target",
-                    icon = Icons.Outlined.Savings,
-                    modifier = Modifier.weight(1f),
-                    badgeBg = IndigoTertiary
-                )
-                StatCardPremium(
-                    title = "Catatan",
-                    value = "$totalNotes",
-                    subtitle = "Ditulis sejauh ini",
-                    icon = Icons.Outlined.Notes,
-                    modifier = Modifier.weight(1f),
-                    badgeBg = MaterialTheme.colorScheme.tertiary
-                )
+        StaggeredEntrance(index = 3) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(text = "Rangkuman Aktivitas", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        StatCardPremium(
+                            title = "Mata Pelajaran",
+                            value = "$totalSubjects",
+                            subtitle = "$studyHours jam/minggu",
+                            icon = Icons.Outlined.List,
+                            modifier = Modifier.weight(1f),
+                            badgeBg = MaterialTheme.colorScheme.primary
+                        )
+                        StatCardPremium(
+                            title = "Total Tugas",
+                            value = "$totalTasks",
+                            subtitle = "$doneTasks selesai ($tasksPct%)",
+                            icon = Icons.Outlined.List,
+                            modifier = Modifier.weight(1f),
+                            badgeBg = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        StatCardPremium(
+                            title = "Olahraga",
+                            value = "$totalWorkout",
+                            subtitle = "${totalCalories} kalori",
+                            icon = Icons.Outlined.FitnessCenter,
+                            modifier = Modifier.weight(1f),
+                            badgeBg = SuccessGreen
+                        )
+                        StatCardPremium(
+                            title = "Donghua",
+                            value = "$totalDonghua",
+                            subtitle = "$watchingDonghua tonton · $finishedDonghua selesai",
+                            icon = Icons.Outlined.Movie,
+                            modifier = Modifier.weight(1f),
+                            badgeBg = WarningAmber
+                        )
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        StatCardPremium(
+                            title = "Tabungan",
+                            value = formatRupiah(totalSavingsAmount),
+                            subtitle = "$savingsPct% dari target",
+                            icon = Icons.Outlined.Savings,
+                            modifier = Modifier.weight(1f),
+                            badgeBg = IndigoTertiary
+                        )
+                        StatCardPremium(
+                            title = "Catatan",
+                            value = "$totalNotes",
+                            subtitle = "Ditulis sejauh ini",
+                            icon = Icons.Outlined.Notes,
+                            modifier = Modifier.weight(1f),
+                            badgeBg = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
+                }
             }
         }
 
         // PROGRESS TARGET CARDS
-        Text(text = "Target Minggu Ini", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        GlassyCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                TargetBar(label = "Belajar", current = "$studyHours jam", target = "10 jam", pct = (studyHours / 10.0).toFloat(), color = MaterialTheme.colorScheme.primary)
-                TargetBar(label = "Kalori Dibakar", current = "$totalCalories kal", target = "2.000 kal", pct = (totalCalories / 2000f), color = SuccessGreen)
-                TargetBar(label = "Tabungan", current = formatRupiah(totalSavingsAmount), target = formatRupiah(targetSavingsAmount), pct = (totalSavingsAmount.toFloat() / Math.max(1f, targetSavingsAmount.toFloat())), color = WarningAmber)
+        StaggeredEntrance(index = 4) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(text = "Target Minggu Ini", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                GlassyCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        TargetBar(label = "Belajar", current = "$studyHours jam", target = "10 jam", pct = (studyHours / 10.0).toFloat(), color = MaterialTheme.colorScheme.primary)
+                        TargetBar(label = "Kalori Dibakar", current = "$totalCalories kal", target = "2.000 kal", pct = (totalCalories / 2000f), color = SuccessGreen)
+                        TargetBar(label = "Tabungan", current = formatRupiah(totalSavingsAmount), target = formatRupiah(targetSavingsAmount), pct = (totalSavingsAmount.toFloat() / Math.max(1f, targetSavingsAmount.toFloat())), color = WarningAmber)
+                    }
+                }
             }
         }
 
         // WATER INTAKE TRACKER CARD (FEATURE 1)
-        Text(text = "Kebutuhan Cairan Harian (Pelacak Air Minum)", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        GlassyCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(
+        StaggeredEntrance(index = 5) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(text = "Kebutuhan Cairan Harian (Pelacak Air Minum)", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                GlassyCard(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    shape = RoundedCornerShape(16.dp),
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
                 ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = "🥤", fontSize = 24.sp)
-                        Column {
-                            Text(text = "Hidrasi Tubuh Anda", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text(text = "Target: 8 Gelas / Hari (${waterIntake * 250}ml / 2000ml)", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text(text = "🥤", fontSize = 24.sp)
+                                Column {
+                                    Text(text = "Hidrasi Tubuh Anda", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    Text(text = "Target: 8 Gelas / Hari (${waterIntake * 250}ml / 2000ml)", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                            
+                            Text(
+                                text = if (waterIntake >= 8) "Terpenuhi! 🎉" else "${waterIntake}/8 Gelas",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = if (waterIntake >= 8) SuccessGreen else MaterialTheme.colorScheme.primary
+                            )
                         }
-                    }
-                    
-                    Text(
-                        text = if (waterIntake >= 8) "Terpenuhi! 🎉" else "${waterIntake}/8 Gelas",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = if (waterIntake >= 8) SuccessGreen else MaterialTheme.colorScheme.primary
-                    )
-                }
 
-                // Smooth linear progress indicator
-                LinearProgressIndicator(
-                    progress = { Math.min(1.0f, waterIntake.toFloat() / 8.0f) },
-                    modifier = Modifier.fillMaxWidth().height(8.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                    strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
-                )
+                        // Smooth linear progress indicator
+                        LinearProgressIndicator(
+                            progress = { Math.min(1.0f, waterIntake.toFloat() / 8.0f) },
+                            modifier = Modifier.fillMaxWidth().height(8.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                            strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                        )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = { viewModel.subtractWaterGlass() },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp),
-                        enabled = waterIntake > 0
-                    ) {
-                        Text("- Kurangi Air", fontSize = 11.sp)
-                    }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { viewModel.subtractWaterGlass() },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp),
+                                enabled = waterIntake > 0
+                            ) {
+                                Text("- Kurangi Air", fontSize = 11.sp)
+                            }
 
-                    Button(
-                        onClick = { viewModel.addWaterGlass() },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                    ) {
-                        Text("+ Minum Air", fontSize = 11.sp, color = Color.White)
+                            Button(
+                                onClick = { viewModel.addWaterGlass() },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                            ) {
+                                Text("+ Minum Air", fontSize = 11.sp, color = Color.White)
+                            }
+                        }
                     }
                 }
             }
         }
 
         // SCRATCHPAD QUICK NOTES (FEATURE 19)
-        Text(text = "Scratchpad / Catatan Cepat", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        GlassyCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "Tulis coretan pikiran atau daftar belanja sementara di sini. Tersimpan otomatis dalam sesi.",
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                OutlinedTextField(
-                    value = scratchpad,
-                    onValueChange = { viewModel.updateScratchpad(it) },
-                    placeholder = { Text("Mulai menulis catatan cepat...") },
-                    modifier = Modifier.fillMaxWidth().height(100.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent
-                    )
-                )
+        StaggeredEntrance(index = 6) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(text = "Scratchpad / Catatan Cepat", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                GlassyCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Tulis coretan pikiran atau daftar belanja sementara di sini. Tersimpan otomatis dalam sesi.",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        OutlinedTextField(
+                            value = scratchpad,
+                            onValueChange = { viewModel.updateScratchpad(it) },
+                            placeholder = { Text("Mulai menulis catatan cepat...") },
+                            modifier = Modifier.fillMaxWidth().height(100.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent
+                            )
+                        )
+                    }
+                }
             }
         }
 
         // DATABASE LOCAL BACKUP (FEATURE 16)
-        Text(text = "Keamanan Data & Ekspor", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        GlassyCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = "Pencadangan Database Room", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                    Text(text = "Status cadangan: $lastBackupTime", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Button(
-                    onClick = { viewModel.triggerLocalBackup() },
-                    shape = RoundedCornerShape(10.dp)
+        StaggeredEntrance(index = 7) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(text = "Keamanan Data & Ekspor", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                GlassyCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Icon(imageVector = Icons.Outlined.CheckCircle, contentDescription = "Backup", modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Cadangkan", fontSize = 11.sp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = "Pencadangan Database Room", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text(text = "Status cadangan: $lastBackupTime", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Button(
+                            onClick = { viewModel.triggerLocalBackup() },
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(imageVector = Icons.Outlined.CheckCircle, contentDescription = "Backup", modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Cadangkan", fontSize = 11.sp)
+                        }
+                    }
                 }
             }
         }
 
         // QUOTES CARD (FEATURE 18)
-        Text(text = "Motivasi Hari Ini", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        ClickableGlassyCard(
-            onClick = {
-                currentQuoteIndex = (currentQuoteIndex + 1) % quotesList.size
-            },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            containerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f),
-            accentColor = MaterialTheme.colorScheme.secondary
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+        StaggeredEntrance(index = 8) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(text = "Motivasi Hari Ini", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                ClickableGlassyCard(
+                    onClick = {
+                        currentQuoteIndex = (currentQuoteIndex + 1) % quotesList.size
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    containerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f),
+                    accentColor = MaterialTheme.colorScheme.secondary
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Info,
-                        contentDescription = "Quote",
-                        tint = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Text(
-                        text = "Klik kartu untuk memutar motivasi lain",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Info,
+                                contentDescription = "Quote",
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "Klik kartu untuk memutar motivasi lain",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
+                        Text(
+                            text = "“$quote”",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
-                Text(
-                    text = "“$quote”",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
             }
         }
 
         // THEME ACCENT CHIPS SELECTOR (FEATURE 15)
-        Text(text = "Pilihan Aksen Warna Hub", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        GlassyCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = "Ubah aksen warna primer dan sekunder aplikasi secara instan sesuai kenyamanan Anda.",
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Row(
+        StaggeredEntrance(index = 9) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(text = "Pilihan Aksen Warna Hub", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                GlassyCard(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    LazyRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(viewModel.availableThemes) { name ->
-                            val dotColor = AccentColors[name]?.get(0) ?: Color.Gray
-                            val isSelected = themeAccent == name
-                            Box(
-                                modifier = Modifier
-                                    .background(
-                                        if (isSelected) dotColor.copy(alpha = 0.12f) else Color.Transparent,
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                    .clickable { viewModel.setThemeAccent(name) }
-                                    .border(
-                                        width = 1.5.dp,
-                                        color = if (isSelected) dotColor else MaterialTheme.colorScheme.outlineVariant,
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                    .padding(vertical = 8.dp, horizontal = 8.dp),
-                                contentAlignment = Alignment.Center
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            text = "Ubah aksen warna primer dan sekunder aplikasi secara instan sesuai kenyamanan Anda.",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            LazyRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
+                                items(viewModel.availableThemes) { name ->
+                                    val dotColor = AccentColors[name]?.get(0) ?: Color.Gray
+                                    val isSelected = themeAccent == name
                                     Box(
                                         modifier = Modifier
-                                            .size(10.dp)
-                                            .background(dotColor, shape = CircleShape)
-                                    )
-                                    Text(
-                                        text = name,
-                                        fontSize = 12.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                    )
+                                            .background(
+                                                if (isSelected) dotColor.copy(alpha = 0.12f) else Color.Transparent,
+                                                shape = RoundedCornerShape(12.dp)
+                                            )
+                                            .clickable { viewModel.setThemeAccent(name) }
+                                            .border(
+                                                width = 1.5.dp,
+                                                color = if (isSelected) dotColor else MaterialTheme.colorScheme.outlineVariant,
+                                                shape = RoundedCornerShape(12.dp)
+                                            )
+                                            .padding(vertical = 8.dp, horizontal = 8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(10.dp)
+                                                    .background(dotColor, shape = CircleShape)
+                                            )
+                                            Text(
+                                                text = name,
+                                                fontSize = 12.sp,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1081,29 +1156,31 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
         }
 
         // RESET ALL APP DATA
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = DangerRed.copy(alpha = 0.1f)),
-            border = BorderStroke(1.dp, DangerRed.copy(alpha = 0.3f))
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        StaggeredEntrance(index = 10) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = DangerRed.copy(alpha = 0.1f)),
+                border = BorderStroke(1.dp, DangerRed.copy(alpha = 0.3f))
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Pembersihan Data", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = DangerRed)
-                    Text("Hapus semua jadwal, tugas, catatan, dan riwayat.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
-                }
-                Button(
-                    onClick = { viewModel.resetAllData() },
-                    colors = ButtonDefaults.buttonColors(containerColor = DangerRed),
-                    shape = RoundedCornerShape(12.dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Reset Data", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Pembersihan Data", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = DangerRed)
+                        Text("Hapus semua jadwal, tugas, catatan, dan riwayat.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                    }
+                    Button(
+                        onClick = { viewModel.resetAllData() },
+                        colors = ButtonDefaults.buttonColors(containerColor = DangerRed),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Reset Data", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
@@ -1227,221 +1304,314 @@ fun StudyScreen(viewModel: PlannerViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // POMODORO FOCUS TIMER CARD (FEATURE 8)
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.15f)),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f))
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+        StaggeredEntrance(index = 0) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.15f)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f))
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = "⏱️", fontSize = 22.sp)
-                        Column {
-                            Text(text = "Fokus Pomodoro", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text(text = "Selesaikan tugas dengan fokus tinggi", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-
-                    Surface(
-                        shape = RoundedCornerShape(100.dp),
-                        color = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.padding(horizontal = 4.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "SESI Selesai: $pomodoroCompleted",
-                            color = Color.White,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                        )
-                    }
-                }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "⏱️", fontSize = 22.sp)
+                            Column {
+                                Text(text = "Fokus Pomodoro", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text(text = "Selesaikan tugas dengan fokus tinggi", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
 
-                // Digital Timer Clock Visuals
-                val mins = pomodoroTimeLeft / 60
-                val secs = pomodoroTimeLeft % 60
-                val timeStr = String.format("%02d:%02d", mins, secs)
-
-                Text(
-                    text = timeStr,
-                    fontSize = 44.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.secondary,
-                    letterSpacing = 1.sp
-                )
-
-                // Quick sessions selectors
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    listOf(
-                        "Fokus (25m)" to 1500,
-                        "Istirahat (5m)" to 300,
-                        "Istirahat Lama (15m)" to 900
-                    ).forEach { (label, seconds) ->
-                        val isCurrent = pomodoroTimeLeft == seconds
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    if (isCurrent) MaterialTheme.colorScheme.secondary else Color.Transparent,
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                                .border(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f), shape = RoundedCornerShape(8.dp))
-                                .clickable {
-                                    if (!pomodoroRunning) {
-                                        viewModel.updatePomodoroTime(seconds)
-                                    } else {
-                                        viewModel.showToast("Hentikan timer dulu untuk ganti sesi!")
-                                    }
-                                }
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        Surface(
+                            shape = RoundedCornerShape(100.dp),
+                            color = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.padding(horizontal = 4.dp)
                         ) {
                             Text(
-                                text = label,
+                                text = "SESI Selesai: $pomodoroCompleted",
+                                color = Color.White,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isCurrent) Color.White else MaterialTheme.colorScheme.onSurface
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                             )
                         }
                     }
-                }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Button(
-                        onClick = { viewModel.togglePomodoro() },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (pomodoroRunning) DangerRed else MaterialTheme.colorScheme.secondary
-                        )
+                    // Digital Timer Clock Visuals
+                    val mins = pomodoroTimeLeft / 60
+                    val secs = pomodoroTimeLeft % 60
+                    val timeStr = String.format("%02d:%02d", mins, secs)
+
+                    Text(
+                        text = timeStr,
+                        fontSize = 44.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.secondary,
+                        letterSpacing = 1.sp
+                    )
+
+                    // Quick sessions selectors
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = if (pomodoroRunning) Icons.Outlined.PlayArrow else Icons.Outlined.PlayArrow,
-                            contentDescription = if (pomodoroRunning) "Pause" else "Mulai"
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(if (pomodoroRunning) "Pause" else "Mulai Fokus", color = Color.White)
+                        listOf(
+                            "Fokus (25m)" to 1500,
+                            "Istirahat (5m)" to 300,
+                            "Istirahat Lama (15m)" to 900
+                        ).forEach { (label, seconds) ->
+                            val isCurrent = pomodoroTimeLeft == seconds
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        if (isCurrent) MaterialTheme.colorScheme.secondary else Color.Transparent,
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                    .border(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f), shape = RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        if (!pomodoroRunning) {
+                                            viewModel.updatePomodoroTime(seconds)
+                                        } else {
+                                            viewModel.showToast("Hentikan timer dulu untuk ganti sesi!")
+                                        }
+                                    }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isCurrent) Color.White else MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
                     }
 
-                    OutlinedButton(
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = { viewModel.togglePomodoro() },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (pomodoroRunning) DangerRed else MaterialTheme.colorScheme.secondary
+                            )
+                        ) {
+                            Icon(
+                                imageVector = if (pomodoroRunning) Icons.Outlined.PlayArrow else Icons.Outlined.PlayArrow,
+                                contentDescription = if (pomodoroRunning) "Pause" else "Mulai"
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(if (pomodoroRunning) "Pause" else "Mulai Fokus", color = Color.White)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                if (pomodoroRunning) viewModel.togglePomodoro()
+                                viewModel.updatePomodoroTime(1500) // reset to 25m
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Reset Timer")
+                        }
+                    }
+                }
+            }
+        }
+
+        // ADD TASK SECTION
+        StaggeredEntrance(index = 1) {
+            GlassyCard(
+                modifier = Modifier.fillMaxWidth(),
+                accentColor = MaterialTheme.colorScheme.primary
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Tambah Tugas Baru",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    OutlinedTextField(
+                        value = taskText,
+                        onValueChange = { taskText = it },
+                        label = { Text("Nama Tugas / PR") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        leadingIcon = { Icon(Icons.Outlined.Edit, null) }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = taskSubject,
+                            onValueChange = { taskSubject = it },
+                            label = { Text("Mata Pelajaran") },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            leadingIcon = { Icon(Icons.Outlined.Book, null) }
+                        )
+                        
+                        val context = androidx.compose.ui.platform.LocalContext.current
+                        val calendar = Calendar.getInstance()
+                        val datePickerDialog = android.app.DatePickerDialog(
+                            context,
+                            { _, year, month, dayOfMonth ->
+                                val selectedDate = Calendar.getInstance()
+                                selectedDate.set(year, month, dayOfMonth)
+                                taskDeadline = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(selectedDate.time)
+                            },
+                            calendar.get(Calendar.YEAR),
+                            calendar.get(Calendar.MONTH),
+                            calendar.get(Calendar.DAY_OF_MONTH)
+                        )
+
+                        OutlinedTextField(
+                            value = taskDeadline,
+                            onValueChange = { },
+                            label = { Text("Deadline (Klik)") },
+                            modifier = Modifier.weight(1f).clickable { datePickerDialog.show() },
+                            shape = RoundedCornerShape(12.dp),
+                            leadingIcon = { Icon(Icons.Outlined.Event, null) },
+                            readOnly = true,
+                            enabled = false,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                                disabledBorderColor = MaterialTheme.colorScheme.outline,
+                                disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Button(
                         onClick = {
-                            if (pomodoroRunning) viewModel.togglePomodoro()
-                            viewModel.updatePomodoroTime(1500) // reset to 25m
+                            if (taskText.isNotBlank()) {
+                                viewModel.addTask(taskText, taskSubject, taskDeadline)
+                                taskText = ""
+                                taskSubject = ""
+                                taskDeadline = ""
+                            }
                         },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Reset Timer")
+                        Icon(Icons.Default.Add, null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Simpan Tugas")
                     }
                 }
             }
         }
 
         // STUDY SCHEDULE TABLE CARD
-        GlassyCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            accentColor = MaterialTheme.colorScheme.primary
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("📅", fontSize = 20.sp)
-                        Text(text = "Jadwal Pelajaran", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        IconButton(onClick = { showAddSlotDialog = true }) {
-                            Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah Slot Waktu")
-                        }
-                        IconButton(onClick = { showAddScheduleDialog = true }) {
-                            Icon(imageVector = Icons.Outlined.List, contentDescription = "Tambah Pelajaran")
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Schedule grid representation
-                if (timeSlots.isEmpty()) {
-                    Text(
-                        text = "Belum ada slot waktu.",
-                        modifier = Modifier.fillMaxWidth().padding(24.dp),
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
-                } else {
-                    val days = remember { DAYS_OF_WEEK.take(5) }
-                    val timeColWidth = 90.dp
-                    val dayColWidth = 115.dp
-                    val scrollState = rememberScrollState()
-
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(scrollState)
+        StaggeredEntrance(index = 2) {
+            GlassyCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                accentColor = MaterialTheme.colorScheme.primary
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Table Header Row
-                        Row(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f))
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // First Column Header: Jam
-                            Box(
-                                modifier = Modifier.width(timeColWidth),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "Jam",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("📅", fontSize = 20.sp)
+                            Text(text = "Jadwal Pelajaran", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            IconButton(onClick = { showAddSlotDialog = true }) {
+                                Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah Slot Waktu")
                             }
+                            IconButton(onClick = { showAddScheduleDialog = true }) {
+                                Icon(imageVector = Icons.Outlined.List, contentDescription = "Tambah Pelajaran")
+                            }
+                        }
+                    }
 
-                            // Day Column Headers
-                            days.forEach { day ->
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Schedule grid representation
+                    if (timeSlots.isEmpty()) {
+                        Text(
+                            text = "Belum ada slot waktu.",
+                            modifier = Modifier.fillMaxWidth().padding(24.dp),
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    } else {
+                        val days = remember { DAYS_OF_WEEK.take(5) }
+                        val timeColWidth = 90.dp
+                        val dayColWidth = 115.dp
+                        val scrollState = rememberScrollState()
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(scrollState)
+                        ) {
+                            // Table Header Row
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f))
+                                    .padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // First Column Header: Jam
                                 Box(
-                                    modifier = Modifier.width(dayColWidth),
+                                    modifier = Modifier.width(timeColWidth),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = day,
+                                        text = "Jam",
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp,
+                                        fontSize = 12.sp,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer
                                     )
                                 }
+
+                                // Day Column Headers
+                                days.forEach { day ->
+                                    Box(
+                                        modifier = Modifier.width(dayColWidth),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = day,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
+                                    }
+                                }
                             }
-                        }
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
 
-                        // Table Data Rows
-                        val sortedSlots = remember(timeSlots) {
-                            timeSlots.sortedBy { it.startTime }
-                        }
+                            // Table Data Rows
+                            val sortedSlots = remember(timeSlots) {
+                                timeSlots.sortedBy { it.startTime }
+                            }
 
-                        sortedSlots.forEachIndexed { rowIndex, slot ->
+                            sortedSlots.forEachIndexed { rowIndex, slot ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -1685,38 +1855,40 @@ fun StudyScreen(viewModel: PlannerViewModel) {
                         modifier = Modifier.animateContentSize(animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow)),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        filteredTasks.forEach { task ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                                    .padding(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Checkbox(
-                                    checked = task.isDone,
-                                    onCheckedChange = { viewModel.toggleTask(task) }
-                                )
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = task.text,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        textDecoration = if (task.isDone) TextDecoration.LineThrough else null,
-                                        color = if (task.isDone) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurface
+                        filteredTasks.forEachIndexed { idx, task ->
+                            StaggeredEntrance(index = 3 + idx) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                                        .padding(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Checkbox(
+                                        checked = task.isDone,
+                                        onCheckedChange = { viewModel.toggleTask(task) }
                                     )
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        if (task.subject.isNotBlank()) {
-                                            Text(text = "📚 ${task.subject}", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
-                                        }
-                                        if (task.deadline.isNotBlank()) {
-                                            Text(text = "📅 ${task.deadline}", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary)
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = task.text,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            textDecoration = if (task.isDone) TextDecoration.LineThrough else null,
+                                            color = if (task.isDone) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            if (task.subject.isNotBlank()) {
+                                                Text(text = "📚 ${task.subject}", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                                            }
+                                            if (task.deadline.isNotBlank()) {
+                                                Text(text = "📅 ${task.deadline}", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary)
+                                            }
                                         }
                                     }
-                                }
-                                IconButton(onClick = { viewModel.deleteTask(task) }) {
-                                    Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus Tugas", tint = DangerRed)
+                                    IconButton(onClick = { viewModel.deleteTask(task) }) {
+                                        Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus Tugas", tint = DangerRed)
+                                    }
                                 }
                             }
                         }
@@ -1753,41 +1925,43 @@ fun StudyScreen(viewModel: PlannerViewModel) {
                     )
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        notes.forEach { note ->
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.05f)),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f))
-                            ) {
-                                Column(modifier = Modifier.padding(12.dp)) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.Top
-                                    ) {
-                                        Text(text = note.title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                        IconButton(onClick = { viewModel.deleteNote(note) }, modifier = Modifier.size(24.dp)) {
-                                            Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus", tint = DangerRed, modifier = Modifier.size(16.dp))
-                                        }
-                                    }
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(text = note.content, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
-                                    if (note.tags.isNotBlank()) {
-                                        Spacer(modifier = Modifier.height(8.dp))
+                        notes.forEachIndexed { idx, note ->
+                            StaggeredEntrance(index = 5 + idx) {
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.05f)),
+                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f))
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
                                         Row(
-                                            modifier = Modifier.horizontalScroll(rememberScrollState()),
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.Top
                                         ) {
-                                            note.tags.split(",").forEach { tag ->
-                                                if (tag.trim().isNotBlank()) {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .clip(RoundedCornerShape(6.dp))
-                                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
-                                                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                                                    ) {
-                                                        Text(text = "#${tag.trim()}", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                            Text(text = note.title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                            IconButton(onClick = { viewModel.deleteNote(note) }, modifier = Modifier.size(24.dp)) {
+                                                Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus", tint = DangerRed, modifier = Modifier.size(16.dp))
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(text = note.content, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
+                                        if (note.tags.isNotBlank()) {
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Row(
+                                                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                note.tags.split(",").forEach { tag ->
+                                                    if (tag.trim().isNotBlank()) {
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .clip(RoundedCornerShape(6.dp))
+                                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                        ) {
+                                                            Text(text = "#${tag.trim()}", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                                        }
                                                     }
                                                 }
                                             }
@@ -1930,6 +2104,7 @@ fun StudyScreen(viewModel: PlannerViewModel) {
         }
     }
 }
+}
 
 // ============================================================
 // WORKOUT SCREEN
@@ -2028,327 +2203,331 @@ fun WorkoutScreen(viewModel: PlannerViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // SUMMARY CARDS
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            StatCardPremium(
-                title = "Total Sesi",
-                value = "$totalSessions",
-                subtitle = "Sesi Olahraga",
-                icon = Icons.Outlined.PlayArrow,
-                modifier = Modifier.weight(1f),
-                badgeBg = MaterialTheme.colorScheme.primary
-            )
-            StatCardPremium(
-                title = "Total Durasi",
-                value = "$totalDuration mnt",
-                subtitle = "Waktu Aktif",
-                icon = Icons.Outlined.Settings,
-                modifier = Modifier.weight(1f),
-                badgeBg = MaterialTheme.colorScheme.secondary
-            )
-            StatCardPremium(
-                title = "Total Kalori",
-                value = "$totalCalories",
-                subtitle = "Kalori Dibakar",
-                icon = Icons.Outlined.CheckCircle,
-                modifier = Modifier.weight(1f),
-                badgeBg = SuccessGreen
-            )
+        StaggeredEntrance(index = 0) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatCardPremium(
+                    title = "Total Sesi",
+                    value = "$totalSessions",
+                    subtitle = "Sesi Olahraga",
+                    icon = Icons.Outlined.PlayArrow,
+                    modifier = Modifier.weight(1f),
+                    badgeBg = MaterialTheme.colorScheme.primary
+                )
+                StatCardPremium(
+                    title = "Total Durasi",
+                    value = "$totalDuration mnt",
+                    subtitle = "Waktu Aktif",
+                    icon = Icons.Outlined.Settings,
+                    modifier = Modifier.weight(1f),
+                    badgeBg = MaterialTheme.colorScheme.secondary
+                )
+                StatCardPremium(
+                    title = "Total Kalori",
+                    value = "$totalCalories",
+                    subtitle = "Kalori Dibakar",
+                    icon = Icons.Outlined.CheckCircle,
+                    modifier = Modifier.weight(1f),
+                    badgeBg = SuccessGreen
+                )
+            }
         }
 
         // CARD DETEKSI LANGKAH (STEP COUNTER) (NEW FEATURE)
-        GlassyCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            accentColor = MaterialTheme.colorScheme.primary
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+        StaggeredEntrance(index = 1) {
+            GlassyCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                accentColor = MaterialTheme.colorScheme.primary
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("👣", fontSize = 24.sp)
-                        Column {
-                            Text(text = "Penghitung Langkah", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Text(text = "Target Harian: $todayStepGoal", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                        }
-                    }
-                    Surface(
-                        color = SuccessGreen.copy(alpha = 0.15f),
-                        shape = RoundedCornerShape(8.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("👣", fontSize = 24.sp)
+                            Column {
+                                Text(text = "Penghitung Langkah", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Text(text = "Target Harian: $todayStepGoal", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                            }
+                        }
+                        Surface(
+                            color = SuccessGreen.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(8.dp)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .clip(CircleShape)
-                                    .background(SuccessGreen)
-                            )
-                            Text(
-                                text = "Lacak Otomatis",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = SuccessGreen
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(SuccessGreen)
+                                )
+                                Text(
+                                    text = "Lacak Otomatis",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = SuccessGreen
+                                )
+                            }
                         }
                     }
-                }
 
-                Divider()
+                    Divider()
 
-                // Circular/Progress indicator row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Circle Progress Visualizer
-                    Box(
-                        modifier = Modifier.size(100.dp),
-                        contentAlignment = Alignment.Center
+                    // Circular/Progress indicator row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val progress = (todaySteps.toFloat() / todayStepGoal.toFloat()).coerceIn(0f, 1f)
+                        // Circle Progress Visualizer
+                        Box(
+                            modifier = Modifier.size(100.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            val progress = (todaySteps.toFloat() / todayStepGoal.toFloat()).coerceIn(0f, 1f)
 
-                        CircularProgressIndicator(
-                            progress = { 1f },
-                            modifier = Modifier.fillMaxSize(),
-                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
-                            strokeWidth = 8.dp
-                        )
-                        CircularProgressIndicator(
-                            progress = { progress },
-                            modifier = Modifier.fillMaxSize(),
-                            color = MaterialTheme.colorScheme.primary,
-                            strokeWidth = 8.dp
-                        )
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "$todaySteps",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp
+                            CircularProgressIndicator(
+                                progress = { 1f },
+                                modifier = Modifier.fillMaxSize(),
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                                strokeWidth = 8.dp
                             )
+                            CircularProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier.fillMaxSize(),
+                                color = MaterialTheme.colorScheme.primary,
+                                strokeWidth = 8.dp
+                            )
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "$todaySteps",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp
+                                )
+                                Text(
+                                    text = "langkah",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+
+                        // Stats and Info
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            val calories = (todaySteps * 0.04f).toInt()
+                            val distanceKm = String.format(Locale.US, "%.2f", todaySteps * 0.00075f)
+                            val pct = (todaySteps.toFloat() / todayStepGoal.toFloat() * 100).toInt()
+
+                            Text("🎯 Pencapaian Hari Ini", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                            Text("Progress target: $pct%", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                            Text("🔥 Kalori: $calories kcal", fontSize = 11.sp, color = SuccessGreen, fontWeight = FontWeight.Bold)
+                            Text("📍 Jarak: $distanceKm km", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                        }
+                    }
+
+                    // Action Buttons
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !hasStepPermission) {
+                            Button(
+                                onClick = { permissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION) },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                            ) {
+                                Icon(imageVector = Icons.Outlined.Warning, contentDescription = "Izin")
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Izinkan Akses Sensor Gerak (Deteksi Langkah)", fontSize = 12.sp)
+                            }
+                        } else {
+                            // Edit target and quick manually log steps
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                var showEditGoalDialog by remember { mutableStateOf(false) }
+                                Button(
+                                    onClick = { showEditGoalDialog = true },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(imageVector = Icons.Outlined.Settings, contentDescription = "Edit Target")
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Edit Target", fontSize = 12.sp)
+                                }
+
+                                if (showEditGoalDialog) {
+                                    var tempGoalInput by remember { mutableStateOf(todayStepGoal.toString()) }
+                                    Dialog(onDismissRequest = { showEditGoalDialog = false }) {
+                                        Card(
+                                            shape = RoundedCornerShape(16.dp),
+                                            modifier = Modifier.padding(16.dp)
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.padding(16.dp),
+                                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                                            ) {
+                                                Text("Perbarui Target Langkah Harian", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                                OutlinedTextField(
+                                                    value = tempGoalInput,
+                                                    onValueChange = { tempGoalInput = it },
+                                                    label = { Text("Target Langkah") },
+                                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                                    modifier = Modifier.fillMaxWidth()
+                                                )
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.End
+                                                ) {
+                                                    TextButton(onClick = { showEditGoalDialog = false }) { Text("Batal") }
+                                                    Button(onClick = {
+                                                        val newGoal = tempGoalInput.toIntOrNull() ?: todayStepGoal
+                                                        if (newGoal > 0) {
+                                                            viewModel.updateStepGoal(newGoal)
+                                                            showEditGoalDialog = false
+                                                        }
+                                                    }) { Text("Simpan") }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Quick Log Manual Button
+                                var showManualLogDialog by remember { mutableStateOf(false) }
+                                OutlinedButton(
+                                    onClick = { showManualLogDialog = true },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(imageVector = Icons.Outlined.Edit, contentDescription = "Manual")
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Tambah Manual", fontSize = 12.sp)
+                                }
+
+                                if (showManualLogDialog) {
+                                    var manualStepsInput by remember { mutableStateOf("") }
+                                    Dialog(onDismissRequest = { showManualLogDialog = false }) {
+                                        Card(
+                                            shape = RoundedCornerShape(16.dp),
+                                            modifier = Modifier.padding(16.dp)
+                                        ) {
+                                            Column(
+                                                modifier = Modifier.padding(16.dp),
+                                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                                            ) {
+                                                Text("Tambah Langkah Secara Manual", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                                OutlinedTextField(
+                                                    value = manualStepsInput,
+                                                    onValueChange = { manualStepsInput = it },
+                                                    label = { Text("Jumlah Langkah (cth: 5000)") },
+                                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                                    modifier = Modifier.fillMaxWidth()
+                                                )
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.End
+                                                ) {
+                                                    TextButton(onClick = { showManualLogDialog = false }) { Text("Batal") }
+                                                    Button(onClick = {
+                                                        val steps = manualStepsInput.toIntOrNull() ?: 0
+                                                        if (steps > 0) {
+                                                            viewModel.addStepLog(steps, todayStepGoal)
+                                                            showManualLogDialog = false
+                                                        }
+                                                    }) { Text("Tambah") }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Simulation options (especially for Emulator/Browser environments)
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "langkah",
-                                fontSize = 10.sp,
+                                text = "Simulasi Langkah Nyata (Untuk Emulator & Cloud):",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
-                        }
-                    }
-
-                    // Stats and Info
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        val calories = (todaySteps * 0.04f).toInt()
-                        val distanceKm = String.format(Locale.US, "%.2f", todaySteps * 0.00075f)
-                        val pct = (todaySteps.toFloat() / todayStepGoal.toFloat() * 100).toInt()
-
-                        Text("🎯 Pencapaian Hari Ini", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                        Text("Progress target: $pct%", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                        Text("🔥 Kalori: $calories kcal", fontSize = 11.sp, color = SuccessGreen, fontWeight = FontWeight.Bold)
-                        Text("📍 Jarak: $distanceKm km", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
-                    }
-                }
-
-                // Action Buttons
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !hasStepPermission) {
-                        Button(
-                            onClick = { permissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION) },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                        ) {
-                            Icon(imageVector = Icons.Outlined.Warning, contentDescription = "Izin")
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Izinkan Akses Sensor Gerak (Deteksi Langkah)", fontSize = 12.sp)
-                        }
-                    } else {
-                        // Edit target and quick manually log steps
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            var showEditGoalDialog by remember { mutableStateOf(false) }
-                            Button(
-                                onClick = { showEditGoalDialog = true },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(imageVector = Icons.Outlined.Settings, contentDescription = "Edit Target")
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Edit Target", fontSize = 12.sp)
-                            }
-
-                            if (showEditGoalDialog) {
-                                var tempGoalInput by remember { mutableStateOf(todayStepGoal.toString()) }
-                                Dialog(onDismissRequest = { showEditGoalDialog = false }) {
-                                    Card(
-                                        shape = RoundedCornerShape(16.dp),
-                                        modifier = Modifier.padding(16.dp)
-                                    ) {
-                                        Column(
-                                            modifier = Modifier.padding(16.dp),
-                                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                                        ) {
-                                            Text("Perbarui Target Langkah Harian", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                            OutlinedTextField(
-                                                value = tempGoalInput,
-                                                onValueChange = { tempGoalInput = it },
-                                                label = { Text("Target Langkah") },
-                                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.End
-                                            ) {
-                                                TextButton(onClick = { showEditGoalDialog = false }) { Text("Batal") }
-                                                Button(onClick = {
-                                                    val newGoal = tempGoalInput.toIntOrNull() ?: todayStepGoal
-                                                    if (newGoal > 0) {
-                                                        viewModel.updateStepGoal(newGoal)
-                                                        showEditGoalDialog = false
-                                                    }
-                                                }) { Text("Simpan") }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Quick Log Manual Button
-                            var showManualLogDialog by remember { mutableStateOf(false) }
-                            OutlinedButton(
-                                onClick = { showManualLogDialog = true },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(imageVector = Icons.Outlined.Edit, contentDescription = "Manual")
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Tambah Manual", fontSize = 12.sp)
-                            }
-
-                            if (showManualLogDialog) {
-                                var manualStepsInput by remember { mutableStateOf("") }
-                                Dialog(onDismissRequest = { showManualLogDialog = false }) {
-                                    Card(
-                                        shape = RoundedCornerShape(16.dp),
-                                        modifier = Modifier.padding(16.dp)
-                                    ) {
-                                        Column(
-                                            modifier = Modifier.padding(16.dp),
-                                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                                        ) {
-                                            Text("Tambah Langkah Secara Manual", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                            OutlinedTextField(
-                                                value = manualStepsInput,
-                                                onValueChange = { manualStepsInput = it },
-                                                label = { Text("Jumlah Langkah (cth: 5000)") },
-                                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                                modifier = Modifier.fillMaxWidth()
-                                            )
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.End
-                                            ) {
-                                                TextButton(onClick = { showManualLogDialog = false }) { Text("Batal") }
-                                                Button(onClick = {
-                                                    val steps = manualStepsInput.toIntOrNull() ?: 0
-                                                    if (steps > 0) {
-                                                        viewModel.addStepLog(steps, todayStepGoal)
-                                                        showManualLogDialog = false
-                                                    }
-                                                }) { Text("Tambah") }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Simulation options (especially for Emulator/Browser environments)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Simulasi Langkah Nyata (Untuk Emulator & Cloud):",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = { viewModel.incrementActiveSteps(100) },
-                                modifier = Modifier.weight(1f),
-                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
-                            ) {
-                                Text("+100", fontSize = 11.sp)
-                            }
-                            OutlinedButton(
-                                onClick = { viewModel.incrementActiveSteps(500) },
-                                modifier = Modifier.weight(1f),
-                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
-                            ) {
-                                Text("+500", fontSize = 11.sp)
-                            }
-                            OutlinedButton(
-                                onClick = { viewModel.incrementActiveSteps(1000) },
-                                modifier = Modifier.weight(1.2f),
-                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
-                            ) {
-                                Text("+1.000", fontSize = 11.sp)
-                            }
-                        }
-                    }
-                }
-
-                // History of steps
-                if (stepLogs.isNotEmpty()) {
-                    Divider()
-                    Text("Riwayat Langkah Terakhir:", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        stepLogs.take(3).forEach { log ->
-                            val logDateStr = remember(log.date) {
-                                val sdf = SimpleDateFormat("EEEE, d MMM yyyy", Locale("id", "ID"))
-                                sdf.format(Date(log.date))
-                            }
-                            val isGoalMet = log.steps >= log.target
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
-                                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Column {
-                                    Text(text = "👣 ${log.steps} / ${log.target} langkah", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                    Text(text = logDateStr, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-                                }
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                OutlinedButton(
+                                    onClick = { viewModel.incrementActiveSteps(100) },
+                                    modifier = Modifier.weight(1f),
+                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
                                 ) {
-                                    if (isGoalMet) {
-                                        Icon(imageVector = Icons.Outlined.CheckCircle, contentDescription = "Goal Met", tint = SuccessGreen, modifier = Modifier.size(16.dp))
+                                    Text("+100", fontSize = 11.sp)
+                                }
+                                OutlinedButton(
+                                    onClick = { viewModel.incrementActiveSteps(500) },
+                                    modifier = Modifier.weight(1f),
+                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                                ) {
+                                    Text("+500", fontSize = 11.sp)
+                                }
+                                OutlinedButton(
+                                    onClick = { viewModel.incrementActiveSteps(1000) },
+                                    modifier = Modifier.weight(1.2f),
+                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
+                                ) {
+                                    Text("+1.000", fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    }
+
+                    // History of steps
+                    if (stepLogs.isNotEmpty()) {
+                        Divider()
+                        Text("Riwayat Langkah Terakhir:", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            stepLogs.take(3).forEach { log ->
+                                val logDateStr = remember(log.date) {
+                                    val sdf = SimpleDateFormat("EEEE, d MMM yyyy", Locale("id", "ID"))
+                                    sdf.format(Date(log.date))
+                                }
+                                val isGoalMet = log.steps >= log.target
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
+                                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text(text = "👣 ${log.steps} / ${log.target} langkah", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        Text(text = logDateStr, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                                     }
-                                    IconButton(
-                                        onClick = { viewModel.deleteStepLog(log) },
-                                        modifier = Modifier.size(24.dp)
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                                     ) {
-                                        Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus", tint = DangerRed.copy(alpha = 0.8f), modifier = Modifier.size(14.dp))
+                                        if (isGoalMet) {
+                                            Icon(imageVector = Icons.Outlined.CheckCircle, contentDescription = "Goal Met", tint = SuccessGreen, modifier = Modifier.size(16.dp))
+                                        }
+                                        IconButton(
+                                            onClick = { viewModel.deleteStepLog(log) },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus", tint = DangerRed.copy(alpha = 0.8f), modifier = Modifier.size(14.dp))
+                                        }
                                     }
                                 }
                             }
@@ -2359,68 +2538,72 @@ fun WorkoutScreen(viewModel: PlannerViewModel) {
         }
 
         // LOG OLAHRAGA CARD
-        GlassyCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(text = "Log Aktivitas Olahraga", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Button(onClick = { showAddWorkoutDialog = true }, shape = RoundedCornerShape(12.dp)) {
-                        Icon(imageVector = Icons.Outlined.Add, contentDescription = "Log Baru")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Log Baru")
+        StaggeredEntrance(index = 2) {
+            GlassyCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "Log Aktivitas Olahraga", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Button(onClick = { showAddWorkoutDialog = true }, shape = RoundedCornerShape(12.dp)) {
+                            Icon(imageVector = Icons.Outlined.Add, contentDescription = "Log Baru")
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Log Baru")
+                        }
                     }
-                }
 
-                Divider()
+                    Divider()
 
-                if (workoutLogs.isEmpty()) {
-                    Text(
-                        text = "Belum ada riwayat olahraga",
-                        modifier = Modifier.fillMaxWidth().padding(32.dp),
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        workoutLogs.forEach { log ->
-                            val dateStr = remember(log.date) {
-                                val sdf = SimpleDateFormat("EEEE, d MMM yyyy", Locale("id", "ID"))
-                                sdf.format(Date(log.date))
-                            }
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(text = log.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                        Text(text = "Tipe: ${log.sportType}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                                        if (log.exerciseName.isNotBlank()) {
-                                            Text(text = "🏋️ ${log.exerciseName} - ${log.sets} Set x ${log.reps} Reps", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
-                                        }
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                            Text(text = "⏱️ ${log.durationMinutes} mnt", fontSize = 11.sp)
-                                            Text(text = "🔥 ${log.caloriesBurned} kal", fontSize = 11.sp, color = SuccessGreen, fontWeight = FontWeight.Bold)
-                                        }
-                                        Text(text = dateStr, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
+                    if (workoutLogs.isEmpty()) {
+                        Text(
+                            text = "Belum ada riwayat olahraga",
+                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            workoutLogs.forEachIndexed { idx, log ->
+                                StaggeredEntrance(index = 3 + idx) {
+                                    val dateStr = remember(log.date) {
+                                        val sdf = SimpleDateFormat("EEEE, d MMM yyyy", Locale("id", "ID"))
+                                        sdf.format(Date(log.date))
                                     }
-                                    IconButton(onClick = { viewModel.deleteWorkoutLog(log) }) {
-                                        Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus Log", tint = DangerRed)
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(text = log.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                                Text(text = "Tipe: ${log.sportType}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                                if (log.exerciseName.isNotBlank()) {
+                                                    Text(text = "🏋️ ${log.exerciseName} - ${log.sets} Set x ${log.reps} Reps", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                                                }
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                                    Text(text = "⏱️ ${log.durationMinutes} mnt", fontSize = 11.sp)
+                                                    Text(text = "🔥 ${log.caloriesBurned} kal", fontSize = 11.sp, color = SuccessGreen, fontWeight = FontWeight.Bold)
+                                                }
+                                                Text(text = dateStr, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
+                                            }
+                                            IconButton(onClick = { viewModel.deleteWorkoutLog(log) }) {
+                                                Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus Log", tint = DangerRed)
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -2431,89 +2614,93 @@ fun WorkoutScreen(viewModel: PlannerViewModel) {
         }
 
         // HISTOGRAM VISUALIZATION (CUSTOM CANVAS RENDERING)
-        Text(text = "Statistik 7 Hari Terakhir", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-        GlassyCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                // Get list of last 7 calendar dates
-                val last7DaysData = remember(workoutLogs) {
-                    val sdf = SimpleDateFormat("dd/MM", Locale.getDefault())
-                    val list = mutableListOf<Pair<String, Int>>()
-                    val calendar = Calendar.getInstance()
-                    calendar.add(Calendar.DAY_OF_YEAR, -6)
-                    for (i in 0..6) {
-                        val dayStr = sdf.format(calendar.time)
-                        val startOfDay = calendar.clone() as Calendar
-                        startOfDay.set(Calendar.HOUR_OF_DAY, 0)
-                        startOfDay.set(Calendar.MINUTE, 0)
-                        startOfDay.set(Calendar.SECOND, 0)
-                        val endOfDay = calendar.clone() as Calendar
-                        endOfDay.set(Calendar.HOUR_OF_DAY, 23)
-                        endOfDay.set(Calendar.MINUTE, 59)
-                        endOfDay.set(Calendar.SECOND, 59)
-
-                        val dayCal = workoutLogs.filter {
-                            it.date in startOfDay.timeInMillis..endOfDay.timeInMillis
-                        }.sumOf { it.caloriesBurned }
-
-                        list.add(Pair(dayStr, dayCal))
-                        calendar.add(Calendar.DAY_OF_YEAR, 1)
-                    }
-                    list
-                }
-
-                // Draw gorgeous custom bar graph with rounded corners and primary gradient color
-                val barColor = MaterialTheme.colorScheme.primary
-                val trackColor = MaterialTheme.colorScheme.outlineVariant
-                val textColor = MaterialTheme.colorScheme.onSurface
-
-                Canvas(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp)
-                ) {
-                    val maxVal = Math.max(1, last7DaysData.maxOf { it.second })
-                    val spacing = size.width / 7.5f
-                    val barWidth = spacing * 0.6f
-
-                    last7DaysData.forEachIndexed { idx, pair ->
-                        val x = (idx + 0.5f) * spacing
-                        val barHeight = (pair.second.toFloat() / maxVal.toFloat()) * (size.height - 40.dp.toPx())
-                        val y = size.height - 25.dp.toPx()
-
-                        // Draw background track line
-                        drawLine(
-                            color = trackColor.copy(alpha = 0.3f),
-                            start = Offset(x, y),
-                            end = Offset(x, 10.dp.toPx()),
-                            strokeWidth = barWidth,
-                            cap = androidx.compose.ui.graphics.StrokeCap.Round
-                        )
-
-                        // Draw active column
-                        if (barHeight > 0) {
-                            drawLine(
-                                color = barColor,
-                                start = Offset(x, y),
-                                end = Offset(x, y - barHeight),
-                                strokeWidth = barWidth,
-                                cap = androidx.compose.ui.graphics.StrokeCap.Round
-                            )
-                        }
-                    }
-                }
-
-                // Labels Row
-                Row(
+        StaggeredEntrance(index = 3) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(text = "Statistik 7 Hari Terakhir", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                GlassyCard(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    last7DaysData.forEach { pair ->
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                            Text(text = pair.first, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            Text(text = "${pair.second}", fontSize = 9.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        // Get list of last 7 calendar dates
+                        val last7DaysData = remember(workoutLogs) {
+                            val sdf = SimpleDateFormat("dd/MM", Locale.getDefault())
+                            val list = mutableListOf<Pair<String, Int>>()
+                            val calendar = Calendar.getInstance()
+                            calendar.add(Calendar.DAY_OF_YEAR, -6)
+                            for (i in 0..6) {
+                                val dayStr = sdf.format(calendar.time)
+                                val startOfDay = calendar.clone() as Calendar
+                                startOfDay.set(Calendar.HOUR_OF_DAY, 0)
+                                startOfDay.set(Calendar.MINUTE, 0)
+                                startOfDay.set(Calendar.SECOND, 0)
+                                val endOfDay = calendar.clone() as Calendar
+                                endOfDay.set(Calendar.HOUR_OF_DAY, 23)
+                                endOfDay.set(Calendar.MINUTE, 59)
+                                endOfDay.set(Calendar.SECOND, 59)
+
+                                val dayCal = workoutLogs.filter {
+                                    it.date in startOfDay.timeInMillis..endOfDay.timeInMillis
+                                }.sumOf { it.caloriesBurned }
+
+                                list.add(Pair(dayStr, dayCal))
+                                calendar.add(Calendar.DAY_OF_YEAR, 1)
+                            }
+                            list
+                        }
+
+                        // Draw gorgeous custom bar graph with rounded corners and primary gradient color
+                        val barColor = MaterialTheme.colorScheme.primary
+                        val trackColor = MaterialTheme.colorScheme.outlineVariant
+                        val textColor = MaterialTheme.colorScheme.onSurface
+
+                        Canvas(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(180.dp)
+                        ) {
+                            val maxVal = Math.max(1, last7DaysData.maxOf { it.second })
+                            val spacing = size.width / 7.5f
+                            val barWidth = spacing * 0.6f
+
+                            last7DaysData.forEachIndexed { idx, pair ->
+                                val x = (idx + 0.5f) * spacing
+                                val barHeight = (pair.second.toFloat() / maxVal.toFloat()) * (size.height - 40.dp.toPx())
+                                val y = size.height - 25.dp.toPx()
+
+                                // Draw background track line
+                                drawLine(
+                                    color = trackColor.copy(alpha = 0.3f),
+                                    start = Offset(x, y),
+                                    end = Offset(x, 10.dp.toPx()),
+                                    strokeWidth = barWidth,
+                                    cap = androidx.compose.ui.graphics.StrokeCap.Round
+                                )
+
+                                // Draw active column
+                                if (barHeight > 0) {
+                                    drawLine(
+                                        color = barColor,
+                                        start = Offset(x, y),
+                                        end = Offset(x, y - barHeight),
+                                        strokeWidth = barWidth,
+                                        cap = androidx.compose.ui.graphics.StrokeCap.Round
+                                    )
+                                }
+                            }
+                        }
+
+                        // Labels Row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            last7DaysData.forEach { pair ->
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                    Text(text = pair.first, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    Text(text = "${pair.second}", fontSize = 9.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
+                                }
+                            }
                         }
                     }
                 }
@@ -2674,98 +2861,102 @@ fun SavingScreen(viewModel: PlannerViewModel) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(text = "Target Tabungan", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Button(onClick = { showAddGoalDialog = true }, shape = RoundedCornerShape(12.dp)) {
-                        Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Tambah")
-                    }
-                }
-
-                Divider()
-
-                if (savingGoals.isEmpty()) {
-                    Text(
-                        text = "Belum ada target tabungan",
-                        modifier = Modifier.fillMaxWidth().padding(32.dp),
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
-                } else {
-                    Column(
-                        modifier = Modifier.animateContentSize(animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessLow)),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+        StaggeredEntrance(index = 0) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        savingGoals.forEach { goal ->
-                            val pct = if (goal.targetAmount > 0) (goal.currentAmount.toFloat() / goal.targetAmount.toFloat()) else 0f
-                            val pctText = Math.round(pct * 100)
+                        Text(text = "Target Tabungan", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Button(onClick = { showAddGoalDialog = true }, shape = RoundedCornerShape(12.dp)) {
+                            Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah")
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Tambah")
+                        }
+                    }
 
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                            ) {
-                                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Row(
+                    Divider()
+
+                    if (savingGoals.isEmpty()) {
+                        Text(
+                            text = "Belum ada target tabungan",
+                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    } else {
+                        Column(
+                            modifier = Modifier.animateContentSize(animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessLow)),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            savingGoals.forEachIndexed { idx, goal ->
+                                StaggeredEntrance(index = 1 + idx) {
+                                    val pct = if (goal.targetAmount > 0) (goal.currentAmount.toFloat() / goal.targetAmount.toFloat()) else 0f
+                                    val pctText = Math.round(pct * 100)
+
+                                    Card(
                                         modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)),
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
                                     ) {
-                                        Text(text = goal.name, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            IconButton(onClick = {
-                                                editTargetGoal = goal
-                                                goalName = goal.name
-                                                goalTarget = goal.targetAmount.toString()
-                                                goalCurrent = goal.currentAmount.toString()
-                                            }, modifier = Modifier.size(32.dp)) {
-                                                Icon(imageVector = Icons.Outlined.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(text = goal.name, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                    IconButton(onClick = {
+                                                        editTargetGoal = goal
+                                                        goalName = goal.name
+                                                        goalTarget = goal.targetAmount.toString()
+                                                        goalCurrent = goal.currentAmount.toString()
+                                                    }, modifier = Modifier.size(32.dp)) {
+                                                        Icon(imageVector = Icons.Outlined.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                                                    }
+                                                    IconButton(onClick = { viewModel.deleteSavingGoal(goal) }, modifier = Modifier.size(32.dp)) {
+                                                        Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus", tint = DangerRed, modifier = Modifier.size(18.dp))
+                                                    }
+                                                }
                                             }
-                                            IconButton(onClick = { viewModel.deleteSavingGoal(goal) }, modifier = Modifier.size(32.dp)) {
-                                                Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus", tint = DangerRed, modifier = Modifier.size(18.dp))
+
+                                            LinearProgressIndicator(
+                                                progress = pct.coerceIn(0f, 1f),
+                                                color = if (pct >= 1f) SuccessGreen else MaterialTheme.colorScheme.primary,
+                                                trackColor = MaterialTheme.colorScheme.outlineVariant,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(10.dp)
+                                                    .clip(CircleShape)
+                                            )
+
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceBetween
+                                            ) {
+                                                Text(
+                                                    text = "${formatRupiah(goal.currentAmount)} / ${formatRupiah(goal.targetAmount)}",
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                Text(
+                                                    text = "$pctText%",
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (pct >= 1f) SuccessGreen else MaterialTheme.colorScheme.primary
+                                                )
                                             }
                                         }
-                                    }
-
-                                    LinearProgressIndicator(
-                                        progress = pct.coerceIn(0f, 1f),
-                                        color = if (pct >= 1f) SuccessGreen else MaterialTheme.colorScheme.primary,
-                                        trackColor = MaterialTheme.colorScheme.outlineVariant,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(10.dp)
-                                            .clip(CircleShape)
-                                    )
-
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(
-                                            text = "${formatRupiah(goal.currentAmount)} / ${formatRupiah(goal.targetAmount)}",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Text(
-                                            text = "$pctText%",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (pct >= 1f) SuccessGreen else MaterialTheme.colorScheme.primary
-                                        )
                                     }
                                 }
                             }
@@ -2964,272 +3155,266 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // POINTS BAR
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        StaggeredEntrance(index = 0) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text(text = "Total Poin Otaku", fontWeight = FontWeight.Bold, color = Color.White)
-                Box(
+                Row(
                     modifier = Modifier
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.2f))
-                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "⭐ $totalPoints Poin", color = Color.White, fontWeight = FontWeight.ExtraBold)
+                    Text(text = "Total Poin Otaku", fontWeight = FontWeight.Bold, color = Color.White)
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.2f))
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Text(text = "⭐ $totalPoints Poin", color = Color.White, fontWeight = FontWeight.ExtraBold)
+                    }
                 }
             }
         }
 
         // STATS CARD
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
+        StaggeredEntrance(index = 1) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "$statsTotal", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = MaterialTheme.colorScheme.primary)
-                    Text(text = "Total", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "$statsWatching", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = MaterialTheme.colorScheme.secondary)
-                    Text(text = "Tonton", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "$statsFinished", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = SuccessGreen)
-                    Text(text = "Selesai", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "$statsWaiting", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = WarningAmber)
-                    Text(text = "Tunggu", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = "$statsTotal", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = MaterialTheme.colorScheme.primary)
+                        Text(text = "Total", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = "$statsWatching", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = MaterialTheme.colorScheme.secondary)
+                        Text(text = "Tonton", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = "$statsFinished", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = SuccessGreen)
+                        Text(text = "Selesai", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = "$statsWaiting", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = WarningAmber)
+                        Text(text = "Tunggu", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    }
                 }
             }
         }
 
         // TOOLBAR
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = { Text("Cari donghua...") },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true,
-                leadingIcon = { Icon(imageVector = Icons.Outlined.Search, contentDescription = "Search") }
-            )
-            Button(
-                onClick = { showAddDonghuaDialog = true },
-                shape = RoundedCornerShape(12.dp)
+        StaggeredEntrance(index = 2) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah")
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Tambah")
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Cari donghua...") },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true,
+                    leadingIcon = { Icon(imageVector = Icons.Outlined.Search, contentDescription = "Search") }
+                )
+                Button(
+                    onClick = { showAddDonghuaDialog = true },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah")
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Tambah")
+                }
             }
         }
 
         // FILTER CHIPS & SORT
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            listOf("all" to "Semua", "watching" to "Tonton", "finished" to "Selesai", "waiting" to "Tunggu", "favorites" to "Favorit").forEach { (filterVal, label) ->
-                FilterChip(
-                    selected = filterValue == filterVal,
-                    onClick = { filterValue = filterVal },
-                    label = { Text(label) }
-                )
-            }
-        }
+        StaggeredEntrance(index = 3) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf("all" to "Semua", "watching" to "Tonton", "finished" to "Selesai", "waiting" to "Tunggu", "favorites" to "Favorit").forEach { (filterVal, label) ->
+                        FilterChip(
+                            selected = filterValue == filterVal,
+                            onClick = { filterValue = filterVal },
+                            label = { Text(label) }
+                        )
+                    }
+                }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Urutkan Berdasarkan:", fontSize = 12.sp, fontWeight = FontWeight.Medium)
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                listOf("title" to "Judul", "latest" to "Terbaru", "rating" to "Rating").forEach { (sortVal, label) ->
-                    FilterChip(
-                        selected = sortBy == sortVal,
-                        onClick = { sortBy = sortVal },
-                        label = { Text(label, fontSize = 11.sp) }
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Urutkan Berdasarkan:", fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        listOf("title" to "Judul", "latest" to "Terbaru", "rating" to "Rating").forEach { (sortVal, label) ->
+                            FilterChip(
+                                selected = sortBy == sortVal,
+                                onClick = { sortBy = sortVal },
+                                label = { Text(label, fontSize = 11.sp) }
+                            )
+                        }
+                    }
                 }
             }
         }
 
         // ITEMS GRID / COLUMN
-        val processedItems = remember(donghuaItems, filterValue, searchQuery, sortBy) {
-            var items = donghuaItems
-            // Filter
-            if (filterValue == "watching") items = items.filter { it.status == "watching" }
-            if (filterValue == "finished") items = items.filter { it.status == "finished" }
-            if (filterValue == "waiting") items = items.filter { it.status == "waiting" }
-            if (filterValue == "favorites") items = items.filter { it.isFavorite }
-
-            // Search
-            if (searchQuery.isNotBlank()) {
-                items = items.filter { it.title.lowercase(Locale.getDefault()).contains(searchQuery.lowercase(Locale.getDefault())) }
+        val processedItems = remember(donghuaItems, searchQuery, filterValue, sortBy) {
+            var res = donghuaItems
+            if (searchQuery.isNotBlank()) res = res.filter { it.title.contains(searchQuery, true) }
+            if (filterValue != "all") {
+                if (filterValue == "favorites") res = res.filter { it.isFavorite }
+                else res = res.filter { it.status == filterValue }
             }
-
-            // Sort
             when (sortBy) {
-                "latest" -> items.sortedByDescending { it.updatedAt }
-                "rating" -> items.sortedByDescending { it.rating }
-                else -> items.sortedBy { it.title.lowercase(Locale.getDefault()) }
+                "title" -> res.sortedBy { it.title }
+                "rating" -> res.sortedByDescending { it.rating }
+                else -> res.sortedByDescending { it.id }
             }
         }
-
-        if (processedItems.isEmpty()) {
-            Text(
-                text = "Belum ada donghua yang sesuai.",
-                modifier = Modifier.fillMaxWidth().padding(48.dp),
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-            )
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                processedItems.forEach { item ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(text = item.title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(
-                                                when (item.status) {
-                                                    "finished" -> SuccessGreen.copy(alpha = 0.15f)
-                                                    "waiting" -> WarningAmber.copy(alpha = 0.15f)
-                                                    else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                                                }
-                                            )
-                                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                                    ) {
-                                        Text(
-                                            text = when (item.status) {
-                                                "finished" -> "Selesai"
-                                                "waiting" -> "Tunggu"
-                                                else -> "Tonton"
-                                            },
-                                            color = when (item.status) {
-                                                "finished" -> SuccessGreen
-                                                "waiting" -> WarningAmber
-                                                else -> MaterialTheme.colorScheme.primary
-                                            },
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold
+        
+        processedItems.forEachIndexed { idx, item ->
+            StaggeredEntrance(index = 4 + idx) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = item.title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(
+                                            when (item.status) {
+                                                "finished" -> SuccessGreen.copy(alpha = 0.15f)
+                                                "waiting" -> WarningAmber.copy(alpha = 0.15f)
+                                                else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                            }
                                         )
-                                    }
-                                }
-
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    IconButton(onClick = { viewModel.toggleDonghuaFavorite(item) }) {
-                                        Icon(
-                                            imageVector = if (item.isFavorite) Icons.Outlined.Star else Icons.Outlined.Star,
-                                            contentDescription = "Favorit",
-                                            tint = if (item.isFavorite) WarningAmber else MaterialTheme.colorScheme.outline
-                                        )
-                                    }
-                                    IconButton(onClick = {
-                                        editDonghuaItem = item
-                                        donghuaTitle = item.title
-                                        donghuaTotal = item.totalEpisodes.toString()
-                                        donghuaCurrent = item.currentEpisode.toString()
-                                        donghuaStatus = item.status
-                                        donghuaRating = item.rating
-                                        donghuaFav = item.isFavorite
-                                    }) {
-                                        Icon(imageVector = Icons.Outlined.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
-                                    }
-                                    IconButton(onClick = { viewModel.deleteDonghua(item) }) {
-                                        Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus", tint = DangerRed)
-                                    }
-                                }
-                            }
-
-                            // Progress
-                            val pct = if (item.totalEpisodes > 0) (item.currentEpisode.toFloat() / item.totalEpisodes.toFloat()) else 0f
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Eps ${item.currentEpisode} / ${item.totalEpisodes}",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = "${Math.round(pct * 100)}%",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            LinearProgressIndicator(
-                                progress = pct.coerceIn(0f, 1f),
-                                color = MaterialTheme.colorScheme.primary,
-                                trackColor = MaterialTheme.colorScheme.outlineVariant,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(6.dp)
-                                    .clip(CircleShape)
-                            )
-
-                            // Rating stars
-                            Row {
-                                for (i in 1..5) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Star,
-                                        contentDescription = "Rating Star",
-                                        tint = if (i <= item.rating) WarningAmber else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                                        modifier = Modifier.size(16.dp)
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = when (item.status) {
+                                            "finished" -> "Selesai"
+                                            "waiting" -> "Tunggu"
+                                            else -> "Tonton"
+                                        },
+                                        color = when (item.status) {
+                                            "finished" -> SuccessGreen
+                                            "waiting" -> WarningAmber
+                                            else -> MaterialTheme.colorScheme.primary
+                                        },
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
                                     )
                                 }
                             }
 
-                            // Episode increment button
-                            Button(
-                                onClick = { viewModel.incrementDonghua(item) },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), contentColor = MaterialTheme.colorScheme.primary),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah Episode")
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Nonton 1 Episode Lagi", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(onClick = { viewModel.toggleDonghuaFavorite(item) }) {
+                                    Icon(
+                                        imageVector = if (item.isFavorite) Icons.Outlined.Star else Icons.Outlined.Star,
+                                        contentDescription = "Favorit",
+                                        tint = if (item.isFavorite) WarningAmber else MaterialTheme.colorScheme.outline
+                                    )
+                                }
+                                IconButton(onClick = {
+                                    editDonghuaItem = item
+                                    donghuaTitle = item.title
+                                    donghuaTotal = item.totalEpisodes.toString()
+                                    donghuaCurrent = item.currentEpisode.toString()
+                                    donghuaStatus = item.status
+                                    donghuaRating = item.rating
+                                    donghuaFav = item.isFavorite
+                                }) {
+                                    Icon(imageVector = Icons.Outlined.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
+                                }
+                                IconButton(onClick = { viewModel.deleteDonghua(item) }) {
+                                    Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus", tint = DangerRed)
+                                }
                             }
+                        }
+
+                        // Progress
+                        val pct = if (item.totalEpisodes > 0) (item.currentEpisode.toFloat() / item.totalEpisodes.toFloat()) else 0f
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Eps ${item.currentEpisode} / ${item.totalEpisodes}",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "${Math.round(pct * 100)}%",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        LinearProgressIndicator(
+                            progress = pct.coerceIn(0f, 1f),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.outlineVariant,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(CircleShape)
+                        )
+
+                        // Rating stars
+                        Row {
+                            for (i in 1..5) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Star,
+                                    contentDescription = "Rating Star",
+                                    tint = if (i <= item.rating) WarningAmber else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+
+                        // Episode increment button
+                        Button(
+                            onClick = { viewModel.incrementDonghua(item) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), contentColor = MaterialTheme.colorScheme.primary),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah Episode")
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Nonton 1 Episode Lagi", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
                 }
@@ -3389,25 +3574,6 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
 // ============================================================
 // BUDGET SCREEN WITH DANA SYNC INTEGRATION
 // ============================================================
-fun sendTestDanaNotification(context: Context, text: String) {
-    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-    val channelId = "dana_sync_test"
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        val channel = NotificationChannel(channelId, "DANA Sync Test", NotificationManager.IMPORTANCE_HIGH).apply {
-            description = "Channel untuk menguji integrasi otomatis DANA"
-        }
-        notificationManager.createNotificationChannel(channel)
-    }
-    val builder = NotificationCompat.Builder(context, channelId)
-        .setSmallIcon(android.R.drawable.ic_dialog_info)
-        .setContentTitle("DANA")
-        .setContentText(text)
-        .setPriority(NotificationCompat.PRIORITY_HIGH)
-        .setAutoCancel(true)
-    
-    notificationManager.notify(99, builder.build())
-}
-
 @Composable
 fun BudgetScreen(viewModel: PlannerViewModel) {
     val transactions by viewModel.transactions.collectAsStateWithLifecycle()
@@ -3469,183 +3635,135 @@ fun BudgetScreen(viewModel: PlannerViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // BALANCE CARD
-        GlassyCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
-            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
-            accentColor = Color.White
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp)
+        StaggeredEntrance(index = 0) {
+            GlassyCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.85f),
+                accentColor = Color.White
             ) {
-                Text(text = "Total Saldo Anda", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = formatRupiah(balance),
-                    color = Color.White,
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.ExtraBold
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp)
                 ) {
-                    Column {
-                        Text(text = "Pemasukan", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp)
-                        Text(text = formatRupiah(incomeSum), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(text = "Pengeluaran", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp)
-                        Text(text = formatRupiah(expenseSum), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(text = "Total Saldo Anda", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = formatRupiah(balance),
+                        color = Color.White,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text(text = "Pemasukan", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp)
+                            Text(text = formatRupiah(incomeSum), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(text = "Pengeluaran", color = Color.White.copy(alpha = 0.7f), fontSize = 11.sp)
+                            Text(text = formatRupiah(expenseSum), color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
         }
 
         // MONTHLY BUDGET LIMIT CARD (FEATURE 4)
-        GlassyCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(text = "🎯", fontSize = 20.sp)
-                        Column {
-                            Text(text = "Limit Anggaran Bulanan", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text(
-                                text = "Pengeluaran: ${formatRupiah(expenseSum)} / ${formatRupiah(budgetLimit)}",
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    TextButton(
-                        onClick = { showEditLimitDialog = true },
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Text("Set Limit", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                // Progress Bar for Limit
-                val pct = if (budgetLimit > 0) (expenseSum.toFloat() / budgetLimit.toFloat()) else 0f
-                val progressColor = when {
-                    pct >= 1.0f -> DangerRed
-                    pct >= 0.8f -> WarningAmber
-                    else -> MaterialTheme.colorScheme.primary
-                }
-
-                LinearProgressIndicator(
-                    progress = { Math.min(1.0f, pct) },
-                    modifier = Modifier.fillMaxWidth().height(8.dp),
-                    color = progressColor,
-                    trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
-                    strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
-                )
-
-                // Alerts based on budget threshold
-                if (pct >= 1.0f) {
-                    Card(
+        StaggeredEntrance(index = 1) {
+            GlassyCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = DangerRed.copy(alpha = 0.1f)),
-                        border = BorderStroke(1.dp, DangerRed.copy(alpha = 0.3f))
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier.padding(10.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "🎯", fontSize = 20.sp)
+                            Column {
+                                Text(text = "Limit Anggaran Bulanan", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text(
+                                    text = "Pengeluaran: ${formatRupiah(expenseSum)} / ${formatRupiah(budgetLimit)}",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        TextButton(
+                            onClick = { showEditLimitDialog = true },
+                            shape = RoundedCornerShape(10.dp)
                         ) {
-                            Text("🚨", fontSize = 16.sp)
-                            Text(
-                                text = "Peringatan: Pengeluaran bulanan Anda telah melebihi limit anggaran!",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = DangerRed
-                            )
+                            Text("Set Limit", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     }
-                } else if (pct >= 0.8f) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = WarningAmber.copy(alpha = 0.1f)),
-                        border = BorderStroke(1.dp, WarningAmber.copy(alpha = 0.3f))
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(10.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("⚠️", fontSize = 16.sp)
-                            Text(
-                                text = "Perhatian: Pengeluaran bulanan Anda telah mencapai 80% dari limit anggaran!",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = WarningAmber
-                            )
-                        }
+
+                    // Progress Bar for Limit
+                    val pct = if (budgetLimit > 0) (expenseSum.toFloat() / budgetLimit.toFloat()) else 0f
+                    val progressColor = when {
+                        pct >= 1.0f -> DangerRed
+                        pct >= 0.8f -> WarningAmber
+                        else -> MaterialTheme.colorScheme.primary
                     }
-                }
-            }
-        }
 
-        // EDIT BUDGET LIMIT DIALOG
-        if (showEditLimitDialog) {
-            var tempLimitText by remember { mutableStateOf(budgetLimit.toString()) }
+                    LinearProgressIndicator(
+                        progress = { Math.min(1.0f, pct) },
+                        modifier = Modifier.fillMaxWidth().height(8.dp),
+                        color = progressColor,
+                        trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                        strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                    )
 
-            Dialog(onDismissRequest = { showEditLimitDialog = false }) {
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(text = "Ubah Limit Pengeluaran", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
-                        Text(text = "Masukkan batas maksimal pengeluaran bulanan untuk memonitor keuangan Anda dengan waspada.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-                        OutlinedTextField(
-                            value = tempLimitText,
-                            onValueChange = { tempLimitText = it },
-                            label = { Text("Batas Limit (IDR)") },
+                    // Alerts based on budget threshold
+                    if (pct >= 1.0f) {
+                        Card(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
-                        )
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.End,
-                            verticalAlignment = Alignment.CenterVertically
+                            colors = CardDefaults.cardColors(containerColor = DangerRed.copy(alpha = 0.1f)),
+                            border = BorderStroke(1.dp, DangerRed.copy(alpha = 0.3f))
                         ) {
-                            TextButton(onClick = { showEditLimitDialog = false }) {
-                                Text("Batal")
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Button(
-                                onClick = {
-                                    val amount = tempLimitText.replace(',', '.').toDoubleOrNull() ?: 0.0
-                                    viewModel.updateBudgetLimit(amount)
-                                    showEditLimitDialog = false
-                                },
-                                shape = RoundedCornerShape(10.dp)
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("Simpan")
+                                Text("🚨", fontSize = 16.sp)
+                                Text(
+                                    text = "Peringatan: Pengeluaran bulanan Anda telah melebihi limit anggaran!",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = DangerRed
+                                )
+                            }
+                        }
+                    } else if (pct >= 0.8f) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = WarningAmber.copy(alpha = 0.1f)),
+                            border = BorderStroke(1.dp, WarningAmber.copy(alpha = 0.3f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("⚠️", fontSize = 16.sp)
+                                Text(
+                                    text = "Perhatian: Pengeluaran bulanan Anda telah mencapai 80% dari limit anggaran!",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = WarningAmber
+                                )
                             }
                         }
                     }
@@ -3654,181 +3772,101 @@ fun BudgetScreen(viewModel: PlannerViewModel) {
         }
 
         // DANA SYNC INTEGRATION CARD
-        val syncContainerColor = if (isDanaIntegrated) {
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
-        }
-        val syncBorderColor = if (isDanaIntegrated) SuccessGreen.copy(alpha = 0.6f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+        StaggeredEntrance(index = 2) {
+            val syncContainerColor = if (isDanaIntegrated) {
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
+            }
+            val syncBorderColor = if (isDanaIntegrated) SuccessGreen.copy(alpha = 0.6f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
 
-        GlassyCard(
-            modifier = Modifier
-                .fillMaxWidth()
-                .animateContentSize(animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessLow)),
-            shape = RoundedCornerShape(20.dp),
-            containerColor = syncContainerColor,
-            borderStroke = BorderStroke(1.dp, syncBorderColor)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+            GlassyCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .animateContentSize(animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessLow)),
+                shape = RoundedCornerShape(20.dp),
+                containerColor = syncContainerColor,
+                borderStroke = BorderStroke(1.dp, syncBorderColor)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = if (isDanaIntegrated) SuccessGreen.copy(alpha = 0.15f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                            modifier = Modifier.size(40.dp)
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Outlined.CheckCircle,
-                                    contentDescription = "Wallet",
-                                    tint = if (isDanaIntegrated) SuccessGreen else MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(22.dp)
+                            Surface(
+                                shape = CircleShape,
+                                color = if (isDanaIntegrated) SuccessGreen.copy(alpha = 0.15f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.CheckCircle,
+                                        contentDescription = "Wallet",
+                                        tint = if (isDanaIntegrated) SuccessGreen else MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            }
+                            Column {
+                                Text(text = "Otomatisasi Dana (DANA)", fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+                                Text(
+                                    text = if (isDanaIntegrated) "Status: Terhubung & Aktif" else "Status: Belum Terhubung",
+                                    fontSize = 11.sp,
+                                    color = if (isDanaIntegrated) SuccessGreen else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Bold
                                 )
                             }
                         }
-                        Column {
-                            Text(text = "Otomatisasi Dana (DANA)", fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+
+                        Surface(
+                            shape = RoundedCornerShape(100.dp),
+                            color = if (isDanaIntegrated) SuccessGreen else WarningAmber,
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        ) {
                             Text(
-                                text = if (isDanaIntegrated) "Status: Terhubung & Aktif" else "Status: Belum Terhubung",
-                                fontSize = 11.sp,
-                                color = if (isDanaIntegrated) SuccessGreen else MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontWeight = FontWeight.Bold
+                                text = if (isDanaIntegrated) "REALTIME" else "MANUAL",
+                                color = Color.White,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
                     }
 
-                    Surface(
-                        shape = RoundedCornerShape(100.dp),
-                        color = if (isDanaIntegrated) SuccessGreen else WarningAmber,
-                        modifier = Modifier.padding(horizontal = 4.dp)
-                    ) {
-                        Text(
-                            text = if (isDanaIntegrated) "REALTIME" else "MANUAL",
-                            color = Color.White,
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
-                }
-
-                Text(
-                    text = if (isDanaIntegrated) {
-                        "Setiap ada notifikasi transaksi masuk/keluar dari DANA di HP Anda, sistem akan langsung mendeteksi, mengekstrak nominal, dan mencatat transaksi secara otomatis di bawah secara real-time!"
-                    } else {
-                        "Integrasikan dengan sistem notifikasi Android untuk melacak pengeluaran dan pemasukan otomatis setiap kali Anda bertransaksi menggunakan DANA."
-                    },
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                if (!isDanaIntegrated) {
-                    Button(
-                        onClick = {
-                            try {
-                                val intent = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
-                                context.startActivity(intent)
-                            } catch (e: Exception) {
-                                val intent = Intent(Settings.ACTION_SETTINGS)
-                                context.startActivity(intent)
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                    ) {
-                        Icon(imageVector = Icons.Outlined.Settings, contentDescription = "Aktifkan")
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Aktifkan Sinkronisasi DANA")
-                    }
-                }
-
-                Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-                
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "Sandbox Pengujian (Kirim Notifikasi Demo):",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
+                        text = if (isDanaIntegrated) {
+                            "Setiap ada notifikasi transaksi masuk/keluar dari DANA di HP Anda, sistem akan langsung mendeteksi, mengekstrak nominal, dan mencatat transaksi secara otomatis di bawah secara real-time!"
+                        } else {
+                            "Integrasikan dengan sistem notifikasi Android untuk melacak pengeluaran dan pemasukan otomatis setiap kali Anda bertransaksi menggunakan DANA."
+                        },
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    
+
                     if (!isDanaIntegrated) {
-                        Text(
-                            text = "💡 Mode Simulasi Aktif: Klik tombol di bawah untuk langsung menyimulasikan deteksi otomatis DANA.",
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.primary,
-                            lineHeight = 15.sp,
-                            modifier = Modifier.padding(bottom = 4.dp)
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
-                                    notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                                }
-                                
-                                sendTestDanaNotification(
-                                    context = context,
-                                    text = "Pembayaran berhasil sebesar Rp 50.000 ke Tokopedia menggunakan saldo DANA."
-                                )
-
-                                if (!isDanaIntegrated) {
-                                    viewModel.addTransaction(
-                                        desc = "Pembayaran DANA (Otomatis)",
-                                        amount = 50000.0,
-                                        type = "expense"
-                                    )
-                                }
-                            },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp),
-                            border = BorderStroke(1.dp, DangerRed.copy(alpha = 0.5f))
-                        ) {
-                            Icon(imageVector = Icons.Outlined.PlayArrow, contentDescription = "Test Keluar", tint = DangerRed, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Test Rp50K Keluar", fontSize = 11.sp, color = DangerRed)
-                        }
-
                         Button(
                             onClick = {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission) {
-                                    notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                                }
-                                
-                                sendTestDanaNotification(
-                                    context = context,
-                                    text = "Kamu menerima uang sebesar Rp 150.000 dari BUDI UTOMO melalui transfer DANA."
-                                )
-
-                                if (!isDanaIntegrated) {
-                                    viewModel.addTransaction(
-                                        desc = "DANA Masuk (Otomatis)",
-                                        amount = 150000.0,
-                                        type = "income"
-                                    )
+                                try {
+                                    val intent = Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    val intent = Intent(Settings.ACTION_SETTINGS)
+                                    context.startActivity(intent)
                                 }
                             },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen)
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
-                            Icon(imageVector = Icons.Outlined.Add, contentDescription = "Test Masuk", tint = Color.White, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Test Rp150K Masuk", fontSize = 11.sp, color = Color.White)
+                            Icon(imageVector = Icons.Outlined.Settings, contentDescription = "Aktifkan")
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Aktifkan Sinkronisasi DANA")
                         }
                     }
                 }
@@ -3836,108 +3874,107 @@ fun BudgetScreen(viewModel: PlannerViewModel) {
         }
 
         // TRANSACTIONS LIST CARD WITH SMOOTH SIZE TRANSITIONS
-        GlassyCard(
-            modifier = Modifier
-                .fillMaxWidth()
-                .animateContentSize(animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow)),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(text = "Riwayat Transaksi", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Button(onClick = { showAddTxDialog = true }, shape = RoundedCornerShape(12.dp)) {
-                        Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah")
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Transaksi")
-                    }
-                }
-
-                Divider()
-
-                // SEARCH & FILTER CHIPS (FEATURES 5 & 6)
-                OutlinedTextField(
-                    value = txSearchQuery,
-                    onValueChange = { txSearchQuery = it },
-                    placeholder = { Text("Cari transaksi...") },
-                    leadingIcon = { Icon(imageVector = Icons.Outlined.Search, contentDescription = "Cari") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    singleLine = true
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    listOf("all" to "Semua", "income" to "Pemasukan", "expense" to "Pengeluaran").forEach { (typeVal, label) ->
-                        FilterChip(
-                            selected = txFilterType == typeVal,
-                            onClick = { txFilterType = typeVal },
-                            label = { Text(label + " (" + (if (typeVal == "income") transactions.count { it.type == "income" } else if (typeVal == "expense") transactions.count { it.type == "expense" } else transactions.size) + ")", fontSize = 11.sp) }
-                        )
-                    }
-                }
-
-                val filteredTx = remember(transactions, txSearchQuery, txFilterType) {
-                    transactions.filter { tx ->
-                        val matchesSearch = tx.description.contains(txSearchQuery, ignoreCase = true)
-                        val matchesFilter = when (txFilterType) {
-                            "income" -> tx.type == "income"
-                            "expense" -> tx.type == "expense"
-                            else -> true
-                        }
-                        matchesSearch && matchesFilter
-                    }
-                }
-
-                if (filteredTx.isEmpty()) {
-                    Text(
-                        text = if (transactions.isEmpty()) "Belum ada transaksi" else "Transaksi tidak ditemukan",
-                        modifier = Modifier.fillMaxWidth().padding(32.dp),
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
-                } else {
-                    Column(
-                        modifier = Modifier.animateContentSize(animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessLow)),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+        StaggeredEntrance(index = 3) {
+            GlassyCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .animateContentSize(animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow)),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        filteredTx.forEach { tx ->
-                            val dateStr = remember(tx.date) {
-                                val sdf = SimpleDateFormat("EEEE, d MMM yyyy", Locale("id", "ID"))
-                                sdf.format(Date(tx.date))
-                            }
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(text = tx.description, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                        Text(text = dateStr, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-                                    }
+                        Text(text = "Riwayat Transaksi", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Button(onClick = { showAddTxDialog = true }, shape = RoundedCornerShape(12.dp)) {
+                            Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah")
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Transaksi")
+                        }
+                    }
 
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Text(
-                                            text = "${if (tx.type == "income") "+" else "-"} ${formatRupiah(tx.amount)}",
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 14.sp,
-                                            color = if (tx.type == "income") SuccessGreen else DangerRed
-                                        )
-                                        IconButton(onClick = { viewModel.deleteTransaction(tx) }) {
-                                            Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus", tint = DangerRed)
+                    Divider()
+
+                    // SEARCH & FILTER CHIPS (FEATURES 5 & 6)
+                    OutlinedTextField(
+                        value = txSearchQuery,
+                        onValueChange = { txSearchQuery = it },
+                        placeholder = { Text("Cari transaksi...") },
+                        leadingIcon = { Icon(imageVector = Icons.Outlined.Search, contentDescription = "Cari") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf("all" to "Semua", "income" to "Pemasukan", "expense" to "Pengeluaran").forEach { (typeVal, label) ->
+                            FilterChip(
+                                selected = txFilterType == typeVal,
+                                onClick = { txFilterType = typeVal },
+                                label = { Text(label + " (" + (if (typeVal == "income") transactions.count { it.type == "income" } else if (typeVal == "expense") transactions.count { it.type == "expense" } else transactions.size) + ")", fontSize = 11.sp) }
+                            )
+                        }
+                    }
+
+                    val filteredTx = remember(transactions, txSearchQuery, txFilterType) {
+                        var res = transactions
+                        if (txSearchQuery.isNotBlank()) res = res.filter { it.description.contains(txSearchQuery, true) }
+                        if (txFilterType != "all") res = res.filter { it.type == txFilterType }
+                        res.sortedByDescending { it.date }
+                    }
+
+                    if (filteredTx.isEmpty()) {
+                        Text(
+                            text = if (transactions.isEmpty()) "Belum ada transaksi" else "Transaksi tidak ditemukan",
+                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    } else {
+                        Column(
+                            modifier = Modifier.animateContentSize(animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessLow)),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            filteredTx.forEachIndexed { idx, tx ->
+                                StaggeredEntrance(index = 4 + idx) {
+                                    val dateStr = remember(tx.date) {
+                                        val sdf = SimpleDateFormat("EEEE, d MMM yyyy", Locale("id", "ID"))
+                                        sdf.format(Date(tx.date))
+                                    }
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)),
+                                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(text = tx.description, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                                Text(text = dateStr, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                                            }
+
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                Text(
+                                                    text = "${if (tx.type == "income") "+" else "-"} ${formatRupiah(tx.amount)}",
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 14.sp,
+                                                    color = if (tx.type == "income") SuccessGreen else DangerRed
+                                                )
+                                                IconButton(onClick = { viewModel.deleteTransaction(tx) }) {
+                                                    Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus", tint = DangerRed)
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -4045,215 +4082,221 @@ fun ChartScreen(viewModel: PlannerViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Tab Headers
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp)
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+        StaggeredEntrance(index = 0) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
-                listOf("tasks" to "Tugas PR", "subjects" to "Mata Pelajaran", "workouts" to "Olahraga").forEach { (tabVal, label) ->
-                    FilterChip(
-                        selected = activeChartTab == tabVal,
-                        onClick = { activeChartTab = tabVal },
-                        label = { Text(label, fontWeight = FontWeight.Bold) }
-                    )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    listOf("tasks" to "Tugas PR", "subjects" to "Mata Pelajaran", "workouts" to "Olahraga").forEach { (tabVal, label) ->
+                        FilterChip(
+                            selected = activeChartTab == tabVal,
+                            onClick = { activeChartTab = tabVal },
+                            label = { Text(label, fontWeight = FontWeight.Bold) }
+                        )
+                    }
                 }
             }
         }
 
         // CHART DRAWING WINDOW
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    text = when (activeChartTab) {
-                        "tasks" -> "Penyelesaian Tugas / PR"
-                        "subjects" -> "Distribusi Mata Pelajaran"
-                        else -> "Volume Olahraga & Kalori"
-                    },
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
+        StaggeredEntrance(index = 1) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = when (activeChartTab) {
+                            "tasks" -> "Penyelesaian Tugas / PR"
+                            "subjects" -> "Distribusi Mata Pelajaran"
+                            else -> "Volume Olahraga & Kalori"
+                        },
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
 
-                Divider()
+                    Divider()
 
-                when (activeChartTab) {
-                    "tasks" -> {
-                        val total = tasks.size
-                        val done = tasks.count { it.isDone }
-                        val pending = total - done
+                    when (activeChartTab) {
+                        "tasks" -> {
+                            val total = tasks.size
+                            val done = tasks.count { it.isDone }
+                            val pending = total - done
 
-                        if (total == 0) {
-                            Text(
-                                text = "Belum ada tugas untuk diredistribusikan.",
-                                modifier = Modifier.fillMaxWidth().padding(32.dp),
-                                textAlign = TextAlign.Center,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                            )
-                        } else {
-                            // Doughnut Chart using custom canvas
-                            val doneColor = SuccessGreen
-                            val pendingColor = DangerRed
-                            val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+                            if (total == 0) {
+                                Text(
+                                    text = "Belum ada tugas untuk diredistribusikan.",
+                                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                )
+                            } else {
+                                // Doughnut Chart using custom canvas
+                                val doneColor = SuccessGreen
+                                val pendingColor = DangerRed
+                                val onSurfaceColor = MaterialTheme.colorScheme.onSurface
 
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                                Canvas(modifier = Modifier.size(200.dp)) {
-                                    val strokeWidth = 30.dp.toPx()
-                                    val doneAngle = (done.toFloat() / total.toFloat()) * 360f
-                                    val pendingAngle = 360f - doneAngle
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                                    Canvas(modifier = Modifier.size(200.dp)) {
+                                        val strokeWidth = 30.dp.toPx()
+                                        val doneAngle = (done.toFloat() / total.toFloat()) * 360f
+                                        val pendingAngle = 360f - doneAngle
 
-                                    drawArc(
-                                        color = doneColor,
-                                        startAngle = -90f,
-                                        sweepAngle = doneAngle,
-                                        useCenter = false,
-                                        style = Stroke(width = strokeWidth)
-                                    )
-                                    drawArc(
-                                        color = pendingColor,
-                                        startAngle = -90f + doneAngle,
-                                        sweepAngle = pendingAngle,
-                                        useCenter = false,
-                                        style = Stroke(width = strokeWidth)
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(16.dp))
-
-                                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        Box(modifier = Modifier.size(12.dp).background(doneColor, CircleShape))
-                                        Text("Selesai: $done", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        drawArc(
+                                            color = doneColor,
+                                            startAngle = -90f,
+                                            sweepAngle = doneAngle,
+                                            useCenter = false,
+                                            style = Stroke(width = strokeWidth)
+                                        )
+                                        drawArc(
+                                            color = pendingColor,
+                                            startAngle = -90f + doneAngle,
+                                            sweepAngle = pendingAngle,
+                                            useCenter = false,
+                                            style = Stroke(width = strokeWidth)
+                                        )
                                     }
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        Box(modifier = Modifier.size(12.dp).background(pendingColor, CircleShape))
-                                        Text("Belum: $pending", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                }
-                            }
-                        }
-                    }
 
-                    "subjects" -> {
-                        val subjectsCount = remember(schedules) {
-                            val map = mutableMapOf<String, Int>()
-                            schedules.forEach {
-                                map[it.subjectName] = (map[it.subjectName] ?: 0) + 1
-                            }
-                            map
-                        }
+                                    Spacer(modifier = Modifier.height(16.dp))
 
-                        if (subjectsCount.isEmpty()) {
-                            Text(
-                                text = "Belum ada mata pelajaran di jadwal.",
-                                modifier = Modifier.fillMaxWidth().padding(32.dp),
-                                textAlign = TextAlign.Center,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                            )
-                        } else {
-                            // Display Bar charts of Subjects count
-                            val totalLessons = subjectsCount.values.sum()
-                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                subjectsCount.forEach { (sub, count) ->
-                                    val pct = count.toFloat() / totalLessons.toFloat()
-                                    Column {
-                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text(text = sub, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                            Text(text = "$count sesi (${Math.round(pct * 100)}%)", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            Box(modifier = Modifier.size(12.dp).background(doneColor, CircleShape))
+                                            Text("Selesai: $done", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                         }
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        LinearProgressIndicator(
-                                            progress = pct,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            trackColor = MaterialTheme.colorScheme.outlineVariant,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(8.dp)
-                                                .clip(CircleShape)
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            Box(modifier = Modifier.size(12.dp).background(pendingColor, CircleShape))
+                                            Text("Belum: $pending", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        "subjects" -> {
+                            val subjectsCount = remember(schedules) {
+                                val map = mutableMapOf<String, Int>()
+                                schedules.forEach {
+                                    map[it.subjectName] = (map[it.subjectName] ?: 0) + 1
+                                }
+                                map
+                            }
+
+                            if (subjectsCount.isEmpty()) {
+                                Text(
+                                    text = "Belum ada mata pelajaran di jadwal.",
+                                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                )
+                            } else {
+                                // Display Bar charts of Subjects count
+                                val totalLessons = subjectsCount.values.sum()
+                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    subjectsCount.toList().forEachIndexed { idx, (sub, count) ->
+                                        StaggeredEntrance(index = 2 + idx) {
+                                            val pct = count.toFloat() / totalLessons.toFloat()
+                                            Column {
+                                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                    Text(text = sub, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                                    Text(text = "$count sesi (${Math.round(pct * 100)}%)", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                                }
+                                                Spacer(modifier = Modifier.height(4.dp))
+                                                LinearProgressIndicator(
+                                                    progress = pct,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    trackColor = MaterialTheme.colorScheme.outlineVariant,
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .height(8.dp)
+                                                        .clip(CircleShape)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        else -> {
+                            // Workouts Line/Bar Graph
+                            val calPerDay = remember(workoutLogs) {
+                                val sdf = SimpleDateFormat("dd/MM", Locale.getDefault())
+                                val list = mutableListOf<Pair<String, Int>>()
+                                val calendar = Calendar.getInstance()
+                                calendar.add(Calendar.DAY_OF_YEAR, -6)
+                                for (i in 0..6) {
+                                    val dayStr = sdf.format(calendar.time)
+                                    val startOfDay = calendar.clone() as Calendar
+                                    startOfDay.set(Calendar.HOUR_OF_DAY, 0)
+                                    startOfDay.set(Calendar.MINUTE, 0)
+                                    startOfDay.set(Calendar.SECOND, 0)
+                                    val endOfDay = calendar.clone() as Calendar
+                                    endOfDay.set(Calendar.HOUR_OF_DAY, 23)
+                                    endOfDay.set(Calendar.MINUTE, 59)
+                                    endOfDay.set(Calendar.SECOND, 59)
+
+                                    val dayCal = workoutLogs.filter {
+                                        it.date in startOfDay.timeInMillis..endOfDay.timeInMillis
+                                    }.sumOf { it.caloriesBurned }
+
+                                    list.add(Pair(dayStr, dayCal))
+                                    calendar.add(Calendar.DAY_OF_YEAR, 1)
+                                }
+                                list
+                            }
+
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text("Total Kalori Dibakar Per Hari", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+
+                                // Custom Bar Column Draw
+                                Canvas(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(150.dp)
+                                ) {
+                                    val maxVal = Math.max(1, calPerDay.maxOf { it.second })
+                                    val spacing = size.width / 7.5f
+                                    val barWidth = spacing * 0.5f
+
+                                    calPerDay.forEachIndexed { idx, pair ->
+                                        val x = (idx + 0.5f) * spacing
+                                        val barHeight = (pair.second.toFloat() / maxVal.toFloat()) * (size.height - 20.dp.toPx())
+                                        val y = size.height
+
+                                        // Draw bar rounded line
+                                        drawLine(
+                                            color = SuccessGreen,
+                                            start = Offset(x, y),
+                                            end = Offset(x, y - barHeight),
+                                            strokeWidth = barWidth,
+                                            cap = androidx.compose.ui.graphics.StrokeCap.Round
                                         )
                                     }
                                 }
-                            }
-                        }
-                    }
 
-                    else -> {
-                        // Workouts Line/Bar Graph
-                        val calPerDay = remember(workoutLogs) {
-                            val sdf = SimpleDateFormat("dd/MM", Locale.getDefault())
-                            val list = mutableListOf<Pair<String, Int>>()
-                            val calendar = Calendar.getInstance()
-                            calendar.add(Calendar.DAY_OF_YEAR, -6)
-                            for (i in 0..6) {
-                                val dayStr = sdf.format(calendar.time)
-                                val startOfDay = calendar.clone() as Calendar
-                                startOfDay.set(Calendar.HOUR_OF_DAY, 0)
-                                startOfDay.set(Calendar.MINUTE, 0)
-                                startOfDay.set(Calendar.SECOND, 0)
-                                val endOfDay = calendar.clone() as Calendar
-                                endOfDay.set(Calendar.HOUR_OF_DAY, 23)
-                                endOfDay.set(Calendar.MINUTE, 59)
-                                endOfDay.set(Calendar.SECOND, 59)
-
-                                val dayCal = workoutLogs.filter {
-                                    it.date in startOfDay.timeInMillis..endOfDay.timeInMillis
-                                }.sumOf { it.caloriesBurned }
-
-                                list.add(Pair(dayStr, dayCal))
-                                calendar.add(Calendar.DAY_OF_YEAR, 1)
-                            }
-                            list
-                        }
-
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Text("Total Kalori Dibakar Per Hari", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
-
-                            // Custom Bar Column Draw
-                            Canvas(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(150.dp)
-                            ) {
-                                val maxVal = Math.max(1, calPerDay.maxOf { it.second })
-                                val spacing = size.width / 7.5f
-                                val barWidth = spacing * 0.5f
-
-                                calPerDay.forEachIndexed { idx, pair ->
-                                    val x = (idx + 0.5f) * spacing
-                                    val barHeight = (pair.second.toFloat() / maxVal.toFloat()) * (size.height - 20.dp.toPx())
-                                    val y = size.height
-
-                                    // Draw bar rounded line
-                                    drawLine(
-                                        color = SuccessGreen,
-                                        start = Offset(x, y),
-                                        end = Offset(x, y - barHeight),
-                                        strokeWidth = barWidth,
-                                        cap = androidx.compose.ui.graphics.StrokeCap.Round
-                                    )
-                                }
-                            }
-
-                            // Day markers
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                calPerDay.forEach { pair ->
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                                        Text(text = pair.first, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                        Text(text = "${pair.second} kal", fontSize = 9.sp, color = SuccessGreen, fontWeight = FontWeight.Bold)
+                                // Day markers
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    calPerDay.forEach { pair ->
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                            Text(text = pair.first, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            Text(text = "${pair.second} kal", fontSize = 9.sp, color = SuccessGreen, fontWeight = FontWeight.Bold)
+                                        }
                                     }
                                 }
                             }
