@@ -60,6 +60,7 @@ class TransactionNotificationListener : NotificationListenerService() {
                                     lowerText.contains("ditarik")
 
             val isIncomeExplicit = lowerText.contains("menerima") ||
+                                   lowerText.contains("diterima") ||
                                    lowerText.contains("terima saldo") ||
                                    lowerText.contains("terima uang") ||
                                    lowerText.contains("masuk") ||
