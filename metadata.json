@@ -1,0 +1,6 @@
+{
+  "name": "Planner Pro",
+  "description": "A comprehensive native productivity planner featuring schedule tracking, tasks, budget tracking, workout logger, savings goals, and donghua tracker.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
