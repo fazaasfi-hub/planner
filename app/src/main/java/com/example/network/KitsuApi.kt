@@ -1,36 +1,26 @@
 package com.example.network
 
+import retrofit2.http.GET
+import retrofit2.http.Query
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
-import retrofit2.http.Body
-import retrofit2.http.POST
-import com.squareup.moshi.Json
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 
 import okhttp3.OkHttpClient
 
-interface AniListApi {
-    @POST(".")
-    suspend fun searchAnime(@Body body: AniListRequest): AniListResponse
+interface KitsuApi {
+    @GET("anime")
+    suspend fun searchAnime(@Query("filter[text]") query: String): KitsuResponse
 }
 
-data class AniListRequest(val query: String, val variables: Map<String, String>)
-data class AniListResponse(val data: AniListData)
-data class AniListData(
-    @Json(name = "Media") val media: AniListMedia?,
-    @Json(name = "Page") val page: AniListPage?
-)
-data class AniListPage(val media: List<AniListMedia>?)
-data class AniListMedia(
-    val title: AniListTitle?,
-    val coverImage: AniListCoverImage?
-)
-data class AniListTitle(val romaji: String?, val english: String?, val native: String?)
-data class AniListCoverImage(val large: String?)
+data class KitsuResponse(val data: List<KitsuData>)
+data class KitsuData(val attributes: KitsuAttributes)
+data class KitsuAttributes(val posterImage: KitsuPosterImage?)
+data class KitsuPosterImage(val large: String?)
 
-object AniListClient {
-    private const val BASE_URL = "https://graphql.anilist.co/"
+object KitsuClient {
+    private const val BASE_URL = "https://kitsu.io/api/edge/"
     
     private val client = OkHttpClient.Builder()
         .addInterceptor { chain ->
@@ -46,12 +36,12 @@ object AniListClient {
         .add(KotlinJsonAdapterFactory())
         .build()
 
-    val api: AniListApi by lazy {
+    val api: KitsuApi by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(client)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
-            .create(AniListApi::class.java)
+            .create(KitsuApi::class.java)
     }
 }

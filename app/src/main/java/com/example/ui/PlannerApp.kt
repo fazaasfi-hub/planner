@@ -3517,6 +3517,27 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
                         placeholder = { Text("https://...") }
                     )
 
+                    if (donghuaCoverUrl.isNotBlank()) {
+                        SubcomposeAsyncImage(
+                            model = donghuaCoverUrl,
+                            contentDescription = "Preview",
+                            modifier = Modifier
+                                .height(120.dp)
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp)),
+                            contentScale = ContentScale.Fit,
+                            error = {
+                                Box(
+                                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.errorContainer),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("URL tidak valid", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                        )
+                    }
+
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(value = donghuaTotal, onValueChange = { donghuaTotal = it }, label = { Text("Total Eps") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
                         OutlinedTextField(value = donghuaCurrent, onValueChange = { donghuaCurrent = it }, label = { Text("Eps Sekarang") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
@@ -3604,6 +3625,27 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
                         leadingIcon = { Icon(Icons.Default.Image, contentDescription = null) },
                         placeholder = { Text("https://...") }
                     )
+
+                    if (donghuaCoverUrl.isNotBlank()) {
+                        SubcomposeAsyncImage(
+                            model = donghuaCoverUrl,
+                            contentDescription = "Preview",
+                            modifier = Modifier
+                                .height(120.dp)
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp)),
+                            contentScale = ContentScale.Fit,
+                            error = {
+                                Box(
+                                    modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.errorContainer),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("URL tidak valid", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                        )
+                    }
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(value = donghuaTotal, onValueChange = { donghuaTotal = it }, label = { Text("Total Eps") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))

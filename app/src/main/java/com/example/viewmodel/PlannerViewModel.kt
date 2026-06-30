@@ -556,6 +556,95 @@ class PlannerViewModel(
     }
 
     // Donghua Items
+    private suspend fun searchDonghuaCover(title: String): String? {
+        val searchTerms = mutableListOf<String>()
+        val trimmed = title.trim()
+        searchTerms.add(trimmed)
+        
+        // Use Gemini to get alternative titles (English, Chinese, Romaji)
+        try {
+            val prompt = "Give me alternative titles for the donghua (Chinese anime) '$title'. Return only a comma-separated list of titles, including the official English title, Romaji/Pinyin, and Chinese characters if possible. No other text."
+            val request = com.example.network.GeminiRequest(
+                contents = listOf(com.example.network.GeminiContent(
+                    parts = listOf(com.example.network.GeminiPart(prompt))
+                ))
+            )
+            val response = com.example.network.GeminiClient.api.generateContent(com.example.BuildConfig.GEMINI_API_KEY, request)
+            val aiResponse = response.candidates.firstOrNull()?.content?.parts?.firstOrNull()?.text
+            if (!aiResponse.isNullOrBlank()) {
+                aiResponse.split(",").forEach {
+                    val t = it.trim()
+                    if (t.isNotBlank()) searchTerms.add(t)
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("Planner", "Gemini term expansion fail: ${e.message}")
+        }
+        
+        val cleanTitle = trimmed.split("(")[0].split("[")[0].split(":").first().trim()
+        if (cleanTitle.length > 2 && cleanTitle != trimmed) {
+            searchTerms.add(cleanTitle)
+        }
+        
+        if (trimmed.contains("Soul Land", ignoreCase = true) && !trimmed.contains("Douluo Dalu", ignoreCase = true)) {
+            searchTerms.add("Douluo Dalu")
+        }
+        
+        if (!trimmed.contains("Donghua", ignoreCase = true)) {
+            searchTerms.add("$cleanTitle Donghua")
+        }
+
+        val uniqueTerms = searchTerms.distinct()
+        android.util.Log.d("Planner", "Searching for $title with expanded terms: $uniqueTerms")
+
+        for (term in uniqueTerms) {
+            if (term.isBlank()) continue
+            
+            // 1. AniList (Excellent for Donghua with exact Chinese/English titles)
+            try {
+                val query = """
+                    query (${'$'}s: String) {
+                      Media(search: ${'$'}s, type: ANIME) {
+                        coverImage { large }
+                      }
+                    }
+                """.trimIndent()
+                val request = com.example.network.AniListRequest(query, mapOf("s" to term))
+                val response = com.example.network.AniListClient.api.searchAnime(request)
+                val url = response.data.media?.coverImage?.large
+                if (url != null) {
+                    android.util.Log.d("Planner", "AniList found for '$term': $url")
+                    return url
+                }
+            } catch (e: Exception) {}
+
+            // 2. Kitsu
+            try {
+                val response = com.example.network.KitsuClient.api.searchAnime(term)
+                if (response.data.isNotEmpty()) {
+                    val url = response.data.first().attributes.posterImage?.large
+                    if (url != null) {
+                        android.util.Log.d("Planner", "Kitsu found for '$term': $url")
+                        return url
+                    }
+                }
+            } catch (e: Exception) {}
+
+            // 3. Jikan
+            try {
+                val response = com.example.network.JikanClient.api.searchAnime(term)
+                if (response.data.isNotEmpty()) {
+                    val url = response.data.first().images.jpg?.image_url
+                    if (url != null) {
+                        android.util.Log.d("Planner", "Jikan found for '$term': $url")
+                        return url
+                    }
+                }
+            } catch (e: Exception) {}
+        }
+        return null
+    }
+
     fun addDonghua(title: String, total: Int, current: Int, status: String, rating: Int, isFav: Boolean, manualCoverUrl: String = "") {
         viewModelScope.launch {
             if (title.isBlank()) {
@@ -567,73 +656,16 @@ class PlannerViewModel(
                 return@launch
             }
             
-            var coverUrl: String? = if (manualCoverUrl.isNotBlank()) manualCoverUrl else null
+            var coverUrl = if (manualCoverUrl.isNotBlank()) manualCoverUrl else null
             
             if (coverUrl == null) {
-                val searchTerms = mutableListOf<String>()
-                searchTerms.add(title.trim())
-                
-                val cleanTitle = title.trim().split("(")[0].split("[")[0].trim()
-                if (cleanTitle != title.trim()) {
-                    searchTerms.add(cleanTitle)
-                }
-                
-                // Add "Douluo Dalu" for "Soul Land"
-                if (title.contains("Soul Land", ignoreCase = true) && !title.contains("Douluo Dalu", ignoreCase = true)) {
-                    searchTerms.add("Douluo Dalu")
-                }
-                
-                // Add "Donghua" suffix
-                if (!title.contains("Donghua", ignoreCase = true)) {
-                    searchTerms.add("$cleanTitle Donghua")
-                }
-
-                val uniqueTerms = searchTerms.distinct()
-                android.util.Log.d("Planner", "Searching for $title with terms: $uniqueTerms")
-
-                searchLoop@for (term in uniqueTerms) {
-                    if (term.isBlank()) continue
-                    
-                    try {
-                        val response = com.example.network.JikanClient.api.searchAnime(term)
-                        if (response.data.isNotEmpty()) {
-                            coverUrl = response.data.first().images.jpg?.image_url
-                            if (coverUrl != null) {
-                                android.util.Log.d("Planner", "Jikan found URL for '$term': $coverUrl")
-                                break@searchLoop
-                            }
-                        }
-                    } catch (e: Exception) {
-                        android.util.Log.e("Planner", "Jikan error for $term: ${e.message}")
-                    }
-
-                    try {
-                        val aniListQuery = """
-                            query (${'$'}s: String) {
-                              Media(search: ${'$'}s, type: ANIME) {
-                                coverImage {
-                                  large
-                                }
-                              }
-                            }
-                        """.trimIndent()
-                        val request = com.example.network.AniListRequest(aniListQuery, mapOf("s" to term))
-                        val response = com.example.network.AniListClient.api.searchAnime(request)
-                        coverUrl = response.data.Media?.coverImage?.large
-                        if (coverUrl != null) {
-                            android.util.Log.d("Planner", "AniList found URL for '$term': $coverUrl")
-                            break@searchLoop
-                        }
-                    } catch (e: Exception) {
-                        android.util.Log.e("Planner", "AniList error for $term: ${e.message}")
-                    }
-                }
+                coverUrl = searchDonghuaCover(title)
             }
 
             if (coverUrl != null) {
                 showToast("Sampul ditemukan!")
             } else {
-                showToast("Tidak dapat menemukan sampul otomatis untuk '$title'")
+                showToast("Sampul otomatis tidak ditemukan")
             }
 
             val item = DonghuaItem(
@@ -664,43 +696,9 @@ class PlannerViewModel(
 
             var coverUrl = if (manualCoverUrl.isNotBlank()) manualCoverUrl else item.coverUrl
             if (manualCoverUrl.isBlank() && (coverUrl == null || title != item.title)) {
-                val searchTerms = mutableListOf<String>()
-                searchTerms.add(title.trim())
-                val cleanTitle = title.trim().split("(")[0].split("[")[0].trim()
-                if (cleanTitle != title.trim()) searchTerms.add(cleanTitle)
-                if (title.contains("Soul Land", ignoreCase = true) && !title.contains("Douluo Dalu", ignoreCase = true)) searchTerms.add("Douluo Dalu")
-                if (!title.contains("Donghua", ignoreCase = true)) searchTerms.add("$cleanTitle Donghua")
-
-                val uniqueTerms = searchTerms.distinct()
-                searchLoop@for (term in uniqueTerms) {
-                    if (term.isBlank()) continue
-                    
-                    try {
-                        val response = com.example.network.JikanClient.api.searchAnime(term)
-                        if (response.data.isNotEmpty()) {
-                            coverUrl = response.data.first().images.jpg?.image_url
-                            if (coverUrl != null) break@searchLoop
-                        }
-                    } catch (e: Exception) {}
-
-                    try {
-                        val aniListQuery = """
-                            query (${'$'}s: String) {
-                              Media(search: ${'$'}s, type: ANIME) {
-                                coverImage {
-                                  large
-                                }
-                              }
-                            }
-                        """.trimIndent()
-                        val request = com.example.network.AniListRequest(aniListQuery, mapOf("s" to term))
-                        val response = com.example.network.AniListClient.api.searchAnime(request)
-                        coverUrl = response.data.Media?.coverImage?.large
-                        if (coverUrl != null) break@searchLoop
-                    } catch (e: Exception) {}
-                }
-                
-                if (coverUrl != item.coverUrl && coverUrl != null) {
+                val newCover = searchDonghuaCover(title)
+                if (newCover != null) {
+                    coverUrl = newCover
                     showToast("Sampul diupdate!")
                 }
             }
@@ -755,44 +753,9 @@ class PlannerViewModel(
 
     fun refreshDonghuaCover(item: DonghuaItem) {
         viewModelScope.launch {
-            showToast("Mencari gambar sampul untuk: ${item.title}...")
-            var coverUrl: String? = null
-            val searchTerms = mutableListOf<String>()
-            searchTerms.add(item.title.trim())
-            val cleanTitle = item.title.trim().split("(")[0].split("[")[0].trim()
-            if (cleanTitle != item.title.trim()) searchTerms.add(cleanTitle)
-            if (item.title.contains("Soul Land", ignoreCase = true) && !item.title.contains("Douluo Dalu", ignoreCase = true)) searchTerms.add("Douluo Dalu")
-            if (!item.title.contains("Donghua", ignoreCase = true)) searchTerms.add("$cleanTitle Donghua")
-
-            val uniqueTerms = searchTerms.distinct()
-            searchLoop@for (term in uniqueTerms) {
-                if (term.isBlank()) continue
-                
-                try {
-                    val response = com.example.network.JikanClient.api.searchAnime(term)
-                    if (response.data.isNotEmpty()) {
-                        coverUrl = response.data.first().images.jpg?.image_url
-                        if (coverUrl != null) break@searchLoop
-                    }
-                } catch (e: Exception) {}
-
-                try {
-                    val aniListQuery = """
-                        query (${'$'}s: String) {
-                          Media(search: ${'$'}s, type: ANIME) {
-                            coverImage {
-                              large
-                            }
-                          }
-                        }
-                    """.trimIndent()
-                    val request = com.example.network.AniListRequest(aniListQuery, mapOf("s" to term))
-                    val response = com.example.network.AniListClient.api.searchAnime(request)
-                    coverUrl = response.data.Media?.coverImage?.large
-                    if (coverUrl != null) break@searchLoop
-                } catch (e: Exception) {}
-            }
-
+            showToast("Mencari sampul untuk ${item.title}...")
+            val coverUrl = searchDonghuaCover(item.title)
+            
             if (coverUrl != null) {
                 repository.insertDonghua(item.copy(coverUrl = coverUrl, updatedAt = System.currentTimeMillis()))
                 showToast("Gambar sampul ditemukan!")
