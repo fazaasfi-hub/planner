@@ -22,10 +22,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -69,6 +71,8 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.FastOutLinearInEasing
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
 import com.example.viewmodel.PlannerViewModel
 import com.example.viewmodel.Screen
 import kotlinx.coroutines.launch
@@ -200,6 +204,9 @@ fun StaggeredEntrance(
 
 @Composable
 fun ClickableGlassyCard(
+    id: Any,
+    selectedCardId: Any?,
+    onCardSelected: (Any) -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     shape: RoundedCornerShape = RoundedCornerShape(20.dp),
@@ -209,7 +216,10 @@ fun ClickableGlassyCard(
     borderStroke: BorderStroke? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val isSelected = selectedCardId == id
+    val scale by androidx.compose.animation.core.animateFloatAsState(if (isSelected) 1.05f else 1.0f)
     val isDark = MaterialTheme.colorScheme.surface == SlateSurfaceDark || MaterialTheme.colorScheme.background == SlateBackgroundDark
+    
     val baseColor = containerColor ?: if (isDark) {
         Color(0xFF1E293B).copy(alpha = 0.65f)
     } else {
@@ -217,18 +227,31 @@ fun ClickableGlassyCard(
     }
 
     val finalBorder = borderStroke ?: BorderStroke(
-        width = 1.dp,
+        width = if (isSelected) 2.dp else 1.dp,
         brush = Brush.verticalGradient(
             colors = listOf(
                 if (isDark) Color.White.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.35f),
-                accentColor.copy(alpha = borderAlpha)
+                accentColor.copy(alpha = if (isSelected) 0.8f else borderAlpha)
             )
         )
     )
 
     Card(
-        onClick = onClick,
-        modifier = modifier,
+        onClick = {
+            onCardSelected(id)
+            onClick()
+        },
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .shadow(
+                elevation = if (isSelected) 16.dp else 2.dp,
+                shape = shape,
+                spotColor = if (isSelected) accentColor else Color.Transparent,
+                ambientColor = if (isSelected) accentColor else Color.Transparent
+            ),
         shape = shape,
         colors = CardDefaults.cardColors(containerColor = baseColor),
         border = finalBorder,
@@ -541,6 +564,7 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
     val avatarIndex by viewModel.avatarIndex.collectAsStateWithLifecycle()
     val scratchpad by viewModel.scratchpad.collectAsStateWithLifecycle()
     val themeAccent by viewModel.themeAccent.collectAsStateWithLifecycle()
+    val selectedCardId by viewModel.selectedCardId.collectAsStateWithLifecycle()
 
     var showEditProfileDialog by remember { mutableStateOf(false) }
 
@@ -738,22 +762,26 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
 
         // WEATHER CARD
         StaggeredEntrance(index = 2) {
-            GlassyCard(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Search,
-                            contentDescription = "Weather Icon",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        OutlinedTextField(
+                ClickableGlassyCard(
+                    id = "weather_card",
+                    selectedCardId = selectedCardId,
+                    onCardSelected = { viewModel.selectCard(it) },
+                    onClick = { /* Handle weather card click */ },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Search,
+                                contentDescription = "Weather Icon",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            OutlinedTextField(
                             value = cityQuery,
                             onValueChange = { cityQuery = it },
                             placeholder = { Text("Masukkan kota...") },
@@ -847,6 +875,9 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         StatCardPremium(
+                            id = "stat_subjects",
+                            selectedCardId = selectedCardId,
+                            onCardSelected = { viewModel.selectCard(it) },
                             title = "Mata Pelajaran",
                             value = "$totalSubjects",
                             subtitle = "$studyHours jam/minggu",
@@ -855,6 +886,9 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
                             badgeBg = MaterialTheme.colorScheme.primary
                         )
                         StatCardPremium(
+                            id = "stat_tasks",
+                            selectedCardId = selectedCardId,
+                            onCardSelected = { viewModel.selectCard(it) },
                             title = "Total Tugas",
                             value = "$totalTasks",
                             subtitle = "$doneTasks selesai ($tasksPct%)",
@@ -865,6 +899,9 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         StatCardPremium(
+                            id = "stat_workout",
+                            selectedCardId = selectedCardId,
+                            onCardSelected = { viewModel.selectCard(it) },
                             title = "Olahraga",
                             value = "$totalWorkout",
                             subtitle = "${totalCalories} kalori",
@@ -873,6 +910,9 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
                             badgeBg = SuccessGreen
                         )
                         StatCardPremium(
+                            id = "stat_donghua",
+                            selectedCardId = selectedCardId,
+                            onCardSelected = { viewModel.selectCard(it) },
                             title = "Donghua",
                             value = "$totalDonghua",
                             subtitle = "$watchingDonghua tonton · $finishedDonghua selesai",
@@ -883,6 +923,9 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
                     }
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         StatCardPremium(
+                            id = "stat_savings",
+                            selectedCardId = selectedCardId,
+                            onCardSelected = { viewModel.selectCard(it) },
                             title = "Tabungan",
                             value = formatRupiah(totalSavingsAmount),
                             subtitle = "$savingsPct% dari target",
@@ -891,6 +934,9 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
                             badgeBg = IndigoTertiary
                         )
                         StatCardPremium(
+                            id = "stat_pomodoro",
+                            selectedCardId = selectedCardId,
+                            onCardSelected = { viewModel.selectCard(it) },
                             title = "Sesi Pomodoro",
                             value = "$pomodoroCompleted",
                             subtitle = "Sesi fokus selesai",
@@ -907,7 +953,11 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
         StaggeredEntrance(index = 4) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(text = "Target Minggu Ini", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                GlassyCard(
+                ClickableGlassyCard(
+                    id = "targets_card",
+                    selectedCardId = selectedCardId,
+                    onCardSelected = { viewModel.selectCard(it) },
+                    onClick = { /* Handle targets card click */ },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp)
                 ) {
@@ -924,7 +974,11 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
         StaggeredEntrance(index = 5) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(text = "Kebutuhan Cairan Harian (Pelacak Air Minum)", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                GlassyCard(
+                ClickableGlassyCard(
+                    id = "water_intake_card",
+                    selectedCardId = selectedCardId,
+                    onCardSelected = { viewModel.selectCard(it) },
+                    onClick = { /* Handle water intake click */ },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.25f)
@@ -991,7 +1045,11 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
         StaggeredEntrance(index = 6) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(text = "Scratchpad / Catatan Cepat", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                GlassyCard(
+                ClickableGlassyCard(
+                    id = "scratchpad_card",
+                    selectedCardId = selectedCardId,
+                    onCardSelected = { viewModel.selectCard(it) },
+                    onClick = { /* Handle scratchpad click */ },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp)
                 ) {
@@ -1021,7 +1079,11 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
         StaggeredEntrance(index = 7) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(text = "Keamanan Data & Ekspor", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                GlassyCard(
+                ClickableGlassyCard(
+                    id = "backup_card",
+                    selectedCardId = selectedCardId,
+                    onCardSelected = { viewModel.selectCard(it) },
+                    onClick = { /* Handle backup card click */ },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp)
                 ) {
@@ -1052,6 +1114,9 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(text = "Motivasi Hari Ini", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 ClickableGlassyCard(
+                    id = "quote_card",
+                    selectedCardId = selectedCardId,
+                    onCardSelected = { viewModel.selectCard(it) },
                     onClick = {
                         currentQuoteIndex = (currentQuoteIndex + 1) % quotesList.size
                     },
@@ -1094,7 +1159,11 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
         StaggeredEntrance(index = 9) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(text = "Pilihan Aksen Warna Hub", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                GlassyCard(
+                ClickableGlassyCard(
+                    id = "theme_accent_card",
+                    selectedCardId = selectedCardId,
+                    onCardSelected = { viewModel.selectCard(it) },
+                    onClick = { /* Handle theme accent click */ },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp)
                 ) {
@@ -1171,7 +1240,7 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Pembersihan Data", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = DangerRed)
-                        Text("Hapus semua jadwal, tugas, catatan, dan riwayat.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                        Text("Hapus semua jadwal, tugas, dan riwayat.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                     }
                     Button(
                         onClick = { viewModel.resetAllData() },
@@ -1187,8 +1256,22 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
 }
 
 @Composable
-fun StatCardPremium(title: String, value: String, subtitle: String, icon: ImageVector, modifier: Modifier = Modifier, badgeBg: Color) {
-    GlassyCard(
+fun StatCardPremium(
+    id: String,
+    selectedCardId: Any?,
+    onCardSelected: (Any) -> Unit,
+    title: String, 
+    value: String, 
+    subtitle: String, 
+    icon: ImageVector, 
+    modifier: Modifier = Modifier, 
+    badgeBg: Color
+) {
+    ClickableGlassyCard(
+        id = id,
+        selectedCardId = selectedCardId,
+        onCardSelected = onCardSelected,
+        onClick = { /* Handle card click */ },
         modifier = modifier,
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -1280,6 +1363,7 @@ fun StudyScreen(viewModel: PlannerViewModel) {
     val pomodoroTimeLeft by viewModel.pomodoroTimeLeft.collectAsStateWithLifecycle()
     val pomodoroRunning by viewModel.pomodoroRunning.collectAsStateWithLifecycle()
     val pomodoroCompleted by viewModel.pomodoroCompleted.collectAsStateWithLifecycle()
+    val selectedCardId by viewModel.selectedCardId.collectAsStateWithLifecycle()
 
     LaunchedEffect(pomodoroRunning, pomodoroTimeLeft) {
         if (pomodoroRunning && pomodoroTimeLeft > 0) {
@@ -1621,7 +1705,11 @@ fun StudyScreen(viewModel: PlannerViewModel) {
 
         // STUDY SCHEDULE TABLE CARD ("Jadwal Pelajaran (Grid)")
         StaggeredEntrance(index = 3) {
-            GlassyCard(
+            ClickableGlassyCard(
+                id = "study_schedule_card",
+                selectedCardId = selectedCardId,
+                onCardSelected = { viewModel.selectCard(it) },
+                onClick = { /* Handle study schedule click */ },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 accentColor = MaterialTheme.colorScheme.primary
@@ -2035,6 +2123,7 @@ fun WorkoutScreen(viewModel: PlannerViewModel) {
     val todaySteps by viewModel.todaySteps.collectAsStateWithLifecycle()
     val isTrackingSteps by viewModel.isTrackingSteps.collectAsStateWithLifecycle()
     val todayStepGoal by viewModel.todayStepGoal.collectAsStateWithLifecycle()
+    val selectedCardId by viewModel.selectedCardId.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     var hasStepPermission by remember {
@@ -2125,6 +2214,9 @@ fun WorkoutScreen(viewModel: PlannerViewModel) {
         StaggeredEntrance(index = 0) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 StatCardPremium(
+                    id = "stat_workout_sessions",
+                    selectedCardId = selectedCardId,
+                    onCardSelected = { viewModel.selectCard(it) },
                     title = "Total Sesi",
                     value = "$totalSessions",
                     subtitle = "Sesi Olahraga",
@@ -2133,6 +2225,9 @@ fun WorkoutScreen(viewModel: PlannerViewModel) {
                     badgeBg = MaterialTheme.colorScheme.primary
                 )
                 StatCardPremium(
+                    id = "stat_workout_duration",
+                    selectedCardId = selectedCardId,
+                    onCardSelected = { viewModel.selectCard(it) },
                     title = "Total Durasi",
                     value = "$totalDuration mnt",
                     subtitle = "Waktu Aktif",
@@ -2141,6 +2236,9 @@ fun WorkoutScreen(viewModel: PlannerViewModel) {
                     badgeBg = MaterialTheme.colorScheme.secondary
                 )
                 StatCardPremium(
+                    id = "stat_workout_calories",
+                    selectedCardId = selectedCardId,
+                    onCardSelected = { viewModel.selectCard(it) },
                     title = "Total Kalori",
                     value = "$totalCalories",
                     subtitle = "Kalori Dibakar",
@@ -2153,7 +2251,11 @@ fun WorkoutScreen(viewModel: PlannerViewModel) {
 
         // CARD DETEKSI LANGKAH (STEP COUNTER) (NEW FEATURE)
         StaggeredEntrance(index = 1) {
-            GlassyCard(
+            ClickableGlassyCard(
+                id = "step_counter_card",
+                selectedCardId = selectedCardId,
+                onCardSelected = { viewModel.selectCard(it) },
+                onClick = { /* Handle click */ },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
                 accentColor = MaterialTheme.colorScheme.primary
@@ -3224,9 +3326,29 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.Top
                         ) {
+                            if (item.coverUrl != null) {
+                                AsyncImage(
+                                    model = item.coverUrl,
+                                    contentDescription = item.title,
+                                    modifier = Modifier
+                                        .size(70.dp)
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(70.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("?", style = MaterialTheme.typography.headlineMedium)
+                                }
+                            }
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(text = item.title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                                 Box(

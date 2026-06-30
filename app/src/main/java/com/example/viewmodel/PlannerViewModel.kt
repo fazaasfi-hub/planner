@@ -77,9 +77,6 @@ class PlannerViewModel(
     val tasks: StateFlow<List<StudyTask>> = repository.allTasks
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val notes: StateFlow<List<StudyNote>> = repository.allNotes
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
     val workoutLogs: StateFlow<List<WorkoutLog>> = repository.allWorkoutLogs
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -101,6 +98,13 @@ class PlannerViewModel(
     // 1. Water Intake (Pelacak Air Minum Harian)
     private val _waterIntake = MutableStateFlow(0)
     val waterIntake: StateFlow<Int> = _waterIntake.asStateFlow()
+
+    private val _selectedCardId = MutableStateFlow<Any?>(null)
+    val selectedCardId: StateFlow<Any?> = _selectedCardId.asStateFlow()
+
+    fun selectCard(id: Any?) {
+        _selectedCardId.value = id
+    }
 
     fun addWaterGlass() {
         if (_waterIntake.value < 12) {
@@ -363,37 +367,6 @@ class PlannerViewModel(
         }
     }
 
-    // Notes
-    fun addNote(title: String, content: String, tags: String) {
-        viewModelScope.launch {
-            if (title.isBlank() || content.isBlank()) {
-                showToast("Judul dan isi catatan tidak boleh kosong")
-                return@launch
-            }
-            val note = StudyNote(
-                title = title,
-                content = content,
-                tags = tags
-            )
-            repository.insertNote(note)
-            showToast("Catatan disimpan")
-        }
-    }
-
-    fun deleteNote(note: StudyNote) {
-        viewModelScope.launch {
-            repository.deleteNote(note)
-            showToast("Catatan dihapus")
-        }
-    }
-
-    fun clearNotes() {
-        viewModelScope.launch {
-            repository.clearNotes()
-            showToast("Semua catatan dibersihkan")
-        }
-    }
-
     // Workout logs
     fun addWorkoutLog(
         name: String,
@@ -593,13 +566,36 @@ class PlannerViewModel(
                 showToast("Episode saat ini tidak boleh melebihi total")
                 return@launch
             }
+            
+            var coverUrl: String? = null
+            try {
+                val response = com.example.network.JikanClient.api.searchAnime(title)
+                if (response.data.isNotEmpty()) {
+                    coverUrl = response.data.first().images.jpg?.image_url
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            
+            if (coverUrl == null) {
+                try {
+                    val query = "query (\$search: String) { Media(search: \$search, type: ANIME) { coverImage { large } } }"
+                    val request = com.example.network.AniListRequest(query, mapOf("search" to title))
+                    val response = com.example.network.AniListClient.api.searchAnime(request)
+                    coverUrl = response.data.Media?.coverImage?.large
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+
             val item = DonghuaItem(
                 title = title,
                 totalEpisodes = total,
                 currentEpisode = current,
                 status = status,
                 rating = rating,
-                isFavorite = isFav
+                isFavorite = isFav,
+                coverUrl = coverUrl
             )
             repository.insertDonghua(item)
             showToast("Donghua ditambahkan")
@@ -711,7 +707,6 @@ class PlannerViewModel(
             repository.clearSchedules()
             repository.clearTimeSlots()
             repository.clearTasks()
-            repository.clearNotes()
             repository.clearWorkoutLogs()
             repository.clearSavingGoals()
             repository.clearDonghua()

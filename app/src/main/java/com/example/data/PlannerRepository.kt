@@ -21,12 +21,6 @@ class PlannerRepository(private val plannerDao: PlannerDao) {
     suspend fun deleteTask(task: StudyTask) = plannerDao.deleteTask(task)
     suspend fun clearTasks() = plannerDao.clearAllTasks()
 
-    // Notes
-    val allNotes: Flow<List<StudyNote>> = plannerDao.getAllNotes()
-    suspend fun insertNote(note: StudyNote) = plannerDao.insertNote(note)
-    suspend fun deleteNote(note: StudyNote) = plannerDao.deleteNote(note)
-    suspend fun clearNotes() = plannerDao.clearAllNotes()
-
     // Workout logs
     val allWorkoutLogs: Flow<List<WorkoutLog>> = plannerDao.getAllWorkoutLogs()
     suspend fun insertWorkoutLog(log: WorkoutLog) = plannerDao.insertWorkoutLog(log)

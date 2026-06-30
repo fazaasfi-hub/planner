@@ -39,15 +39,6 @@ data class StudyTask(
     val isNotified: Boolean = false
 )
 
-@Entity(tableName = "study_notes")
-data class StudyNote(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val title: String,
-    val content: String,
-    val tags: String = "", // Comma-separated tags
-    val createdAt: Long = System.currentTimeMillis()
-)
-
 @Entity(tableName = "workout_logs")
 data class WorkoutLog(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -87,6 +78,7 @@ data class DonghuaItem(
     val status: String = "watching", // watching, finished, waiting
     val rating: Int = 5,
     val isFavorite: Boolean = false,
+    val coverUrl: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )
@@ -140,19 +132,6 @@ interface PlannerDao {
 
     @Query("DELETE FROM study_tasks")
     suspend fun clearAllTasks()
-
-    // Study Notes
-    @Query("SELECT * FROM study_notes ORDER BY createdAt DESC")
-    fun getAllNotes(): Flow<List<StudyNote>>
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertNote(note: StudyNote)
-
-    @Delete
-    suspend fun deleteNote(note: StudyNote)
-
-    @Query("DELETE FROM study_notes")
-    suspend fun clearAllNotes()
 
     // Workout Logs
     @Query("SELECT * FROM workout_logs ORDER BY date DESC")
@@ -225,14 +204,13 @@ interface PlannerDao {
         StudySchedule::class,
         TimeSlot::class,
         StudyTask::class,
-        StudyNote::class,
         WorkoutLog::class,
         SavingGoal::class,
         DonghuaItem::class,
         BudgetTransaction::class,
         StepLog::class
     ],
-    version = 4,
+    version = 6,
     exportSchema = false
 )
 abstract class PlannerDatabase : RoomDatabase() {

@@ -74,7 +74,7 @@ fun LoadingOverlay(isLoading: Boolean, onLoadingFinished: () -> Unit, modifier: 
 
     val iconAlpha by animateFloatAsState(
         targetValue = if (stage != LoadingStage.LOGO_EXIT && stage != LoadingStage.PROGRESS_SHOW) 1f else 0f,
-        animationSpec = tween(600), label = "iconAlpha"
+        animationSpec = tween(1000, easing = FastOutSlowInEasing), label = "iconAlpha"
     )
     
     val iconScale by animateFloatAsState(
@@ -88,12 +88,12 @@ fun LoadingOverlay(isLoading: Boolean, onLoadingFinished: () -> Unit, modifier: 
 
     val nameAlpha by animateFloatAsState(
         targetValue = if (stage == LoadingStage.NAME_APPEAR) 1f else 0f,
-        animationSpec = tween(600), label = "nameAlpha"
+        animationSpec = tween(1000, easing = FastOutSlowInEasing), label = "nameAlpha"
     )
 
     val progressAlpha by animateFloatAsState(
         targetValue = if (stage == LoadingStage.PROGRESS_SHOW) 1f else 0f,
-        animationSpec = tween(800), label = "progressAlpha"
+        animationSpec = tween(1000, easing = FastOutSlowInEasing), label = "progressAlpha"
     )
 
     AnimatedVisibility(
