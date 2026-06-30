@@ -72,6 +72,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.FastOutLinearInEasing
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import androidx.compose.ui.layout.ContentScale
 import com.example.viewmodel.PlannerViewModel
 import com.example.viewmodel.Screen
@@ -3144,6 +3145,7 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
     var editDonghuaItem by remember { mutableStateOf<DonghuaItem?>(null) }
 
     var donghuaTitle by remember { mutableStateOf("") }
+    var donghuaCoverUrl by remember { mutableStateOf("") }
     var donghuaTotal by remember { mutableStateOf("12") }
     var donghuaCurrent by remember { mutableStateOf("0") }
     var donghuaStatus by remember { mutableStateOf("watching") }
@@ -3330,23 +3332,40 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
                             verticalAlignment = Alignment.Top
                         ) {
                             if (item.coverUrl != null) {
-                                AsyncImage(
+                                SubcomposeAsyncImage(
                                     model = item.coverUrl,
                                     contentDescription = item.title,
                                     modifier = Modifier
-                                        .size(70.dp)
-                                        .clip(RoundedCornerShape(8.dp)),
-                                    contentScale = ContentScale.Crop
+                                        .size(80.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)),
+                                    contentScale = ContentScale.Crop,
+                                    loading = {
+                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                                        }
+                                    },
+                                    error = {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(Icons.Outlined.BrokenImage, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                        }
+                                    }
                                 )
                             } else {
                                 Box(
                                     modifier = Modifier
-                                        .size(70.dp)
+                                        .size(80.dp)
                                         .clip(RoundedCornerShape(8.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text("?", style = MaterialTheme.typography.headlineMedium)
+                                    Text("?", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
                             Column(modifier = Modifier.weight(1f)) {
@@ -3383,14 +3402,22 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 IconButton(onClick = { viewModel.toggleDonghuaFavorite(item) }) {
                                     Icon(
-                                        imageVector = if (item.isFavorite) Icons.Outlined.Star else Icons.Outlined.Star,
+                                        imageVector = if (item.isFavorite) Icons.Filled.Star else Icons.Outlined.Star,
                                         contentDescription = "Favorit",
                                         tint = if (item.isFavorite) WarningAmber else MaterialTheme.colorScheme.outline
+                                    )
+                                }
+                                IconButton(onClick = { viewModel.refreshDonghuaCover(item) }) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Refresh,
+                                        contentDescription = "Refresh Sampul",
+                                        tint = MaterialTheme.colorScheme.secondary
                                     )
                                 }
                                 IconButton(onClick = {
                                     editDonghuaItem = item
                                     donghuaTitle = item.title
+                                    donghuaCoverUrl = item.coverUrl ?: ""
                                     donghuaTotal = item.totalEpisodes.toString()
                                     donghuaCurrent = item.currentEpisode.toString()
                                     donghuaStatus = item.status
@@ -3474,7 +3501,21 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text("Tambah Donghua Baru", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    OutlinedTextField(value = donghuaTitle, onValueChange = { donghuaTitle = it }, label = { Text("Judul Donghua") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(
+                        value = donghuaTitle,
+                        onValueChange = { donghuaTitle = it },
+                        label = { Text("Judul Donghua") },
+                        modifier = Modifier.fillMaxWidth(),
+                        leadingIcon = { Icon(Icons.Default.Title, contentDescription = null) }
+                    )
+                    OutlinedTextField(
+                        value = donghuaCoverUrl,
+                        onValueChange = { donghuaCoverUrl = it },
+                        label = { Text("URL Sampul (Opsional)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        leadingIcon = { Icon(Icons.Default.Image, contentDescription = null) },
+                        placeholder = { Text("https://...") }
+                    )
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(value = donghuaTotal, onValueChange = { donghuaTotal = it }, label = { Text("Total Eps") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
@@ -3521,8 +3562,9 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
                         Button(onClick = {
                             val tot = donghuaTotal.toIntOrNull() ?: 12
                             val cur = donghuaCurrent.toIntOrNull() ?: 0
-                            viewModel.addDonghua(donghuaTitle, tot, cur, donghuaStatus, donghuaRating, donghuaFav)
+                            viewModel.addDonghua(donghuaTitle, tot, cur, donghuaStatus, donghuaRating, donghuaFav, donghuaCoverUrl)
                             donghuaTitle = ""
+                            donghuaCoverUrl = ""
                             donghuaTotal = "12"
                             donghuaCurrent = "0"
                             donghuaStatus = "watching"
@@ -3547,7 +3589,21 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text("Edit Donghua", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    OutlinedTextField(value = donghuaTitle, onValueChange = { donghuaTitle = it }, label = { Text("Judul Donghua") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(
+                        value = donghuaTitle,
+                        onValueChange = { donghuaTitle = it },
+                        label = { Text("Judul Donghua") },
+                        modifier = Modifier.fillMaxWidth(),
+                        leadingIcon = { Icon(Icons.Default.Title, contentDescription = null) }
+                    )
+                    OutlinedTextField(
+                        value = donghuaCoverUrl,
+                        onValueChange = { donghuaCoverUrl = it },
+                        label = { Text("URL Sampul (Opsional)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        leadingIcon = { Icon(Icons.Default.Image, contentDescription = null) },
+                        placeholder = { Text("https://...") }
+                    )
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(value = donghuaTotal, onValueChange = { donghuaTotal = it }, label = { Text("Total Eps") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
@@ -3595,9 +3651,10 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
                             val tot = donghuaTotal.toIntOrNull() ?: 12
                             val cur = donghuaCurrent.toIntOrNull() ?: 0
                             editDonghuaItem?.let {
-                                viewModel.editDonghua(it, donghuaTitle, tot, cur, donghuaStatus, donghuaRating, donghuaFav)
+                                viewModel.editDonghua(it, donghuaTitle, tot, cur, donghuaStatus, donghuaRating, donghuaFav, donghuaCoverUrl)
                             }
                             donghuaTitle = ""
+                            donghuaCoverUrl = ""
                             donghuaTotal = "12"
                             donghuaCurrent = "0"
                             donghuaStatus = "watching"
