@@ -3318,173 +3318,174 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
         }
         
         processedItems.forEachIndexed { idx, item ->
-            StaggeredEntrance(index = 4 + idx) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .wrapContentHeight(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            if (item.coverUrl != null) {
-                                SubcomposeAsyncImage(
-                                    model = item.coverUrl,
-                                    contentDescription = item.title,
-                                    modifier = Modifier
-                                        .size(80.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)),
-                                    contentScale = ContentScale.Crop,
-                                    loading = {
-                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                                        }
-                                    },
-                                    error = {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(Icons.Outlined.BrokenImage, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                                        }
-                                    }
-                                )
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .size(80.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text("?", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                }
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Thumbnail
+                        if (item.coverUrl != null) {
+                            SubcomposeAsyncImage(
+                                model = item.coverUrl,
+                                contentDescription = item.title,
+                                modifier = Modifier
+                                    .size(width = 70.dp, height = 100.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)),
+                                contentScale = ContentScale.Crop,
+                                loading = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp) } },
+                                error = { Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) { Icon(Icons.Outlined.BrokenImage, contentDescription = null, tint = MaterialTheme.colorScheme.error) } }
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 70.dp, height = 100.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("?", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(text = item.title, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(
-                                            when (item.status) {
-                                                "finished" -> SuccessGreen.copy(alpha = 0.15f)
-                                                "waiting" -> WarningAmber.copy(alpha = 0.15f)
-                                                else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                                            }
-                                        )
-                                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                                ) {
-                                    Text(
-                                        text = when (item.status) {
-                                            "finished" -> "Selesai"
-                                            "waiting" -> "Tunggu"
-                                            else -> "Tonton"
-                                        },
-                                        color = when (item.status) {
-                                            "finished" -> SuccessGreen
-                                            "waiting" -> WarningAmber
-                                            else -> MaterialTheme.colorScheme.primary
-                                        },
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
+                        }
 
+                        // Info
+                        Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(onClick = { viewModel.toggleDonghuaFavorite(item) }) {
-                                    Icon(
-                                        imageVector = if (item.isFavorite) Icons.Filled.Star else Icons.Outlined.Star,
-                                        contentDescription = "Favorit",
-                                        tint = if (item.isFavorite) WarningAmber else MaterialTheme.colorScheme.outline
-                                    )
-                                }
-                                IconButton(onClick = { viewModel.refreshDonghuaCover(item) }) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Refresh,
-                                        contentDescription = "Refresh Sampul",
-                                        tint = MaterialTheme.colorScheme.secondary
-                                    )
-                                }
-                                IconButton(onClick = {
-                                    editDonghuaItem = item
-                                    donghuaTitle = item.title
-                                    donghuaCoverUrl = item.coverUrl ?: ""
-                                    donghuaTotal = item.totalEpisodes.toString()
-                                    donghuaCurrent = item.currentEpisode.toString()
-                                    donghuaStatus = item.status
-                                    donghuaRating = item.rating
-                                    donghuaFav = item.isFavorite
-                                }) {
-                                    Icon(imageVector = Icons.Outlined.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary)
-                                }
-                                IconButton(onClick = { viewModel.deleteDonghua(item) }) {
-                                    Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus", tint = DangerRed)
+                                Text(
+                                    text = item.title,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                if (item.isFavorite) {
+                                    Icon(Icons.Filled.Star, contentDescription = null, tint = WarningAmber, modifier = Modifier.size(16.dp))
                                 }
                             }
-                        }
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+                            
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(
+                                        when (item.status) {
+                                            "finished" -> SuccessGreen.copy(alpha = 0.12f)
+                                            "waiting" -> WarningAmber.copy(alpha = 0.12f)
+                                            else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+                                        }
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = when (item.status) {
+                                        "finished" -> "Selesai"
+                                        "waiting" -> "Tunggu"
+                                        else -> "Tonton"
+                                    },
+                                    color = when (item.status) {
+                                        "finished" -> SuccessGreen
+                                        "waiting" -> WarningAmber
+                                        else -> MaterialTheme.colorScheme.primary
+                                    },
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
 
-                        // Progress
-                        val pct = if (item.totalEpisodes > 0) (item.currentEpisode.toFloat() / item.totalEpisodes.toFloat()) else 0f
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Eps ${item.currentEpisode} / ${item.totalEpisodes}",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = "${Math.round(pct * 100)}%",
-                                fontSize = 11.sp,
+                            Spacer(modifier = Modifier.weight(1f))
+
+                            // Progress row
+                            val pct = if (item.totalEpisodes > 0) (item.currentEpisode.toFloat() / item.totalEpisodes.toFloat()) else 0f
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Bottom
+                            ) {
+                                Text("Eps ${item.currentEpisode}/${item.totalEpisodes}", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                Text("${Math.round(pct * 100)}%", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            }
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+                            
+                            LinearProgressIndicator(
+                                progress = pct.coerceIn(0f, 1f),
                                 color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
+                                trackColor = MaterialTheme.colorScheme.outlineVariant,
+                                modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape)
                             )
                         }
-                        LinearProgressIndicator(
-                            progress = pct.coerceIn(0f, 1f),
-                            color = MaterialTheme.colorScheme.primary,
-                            trackColor = MaterialTheme.colorScheme.outlineVariant,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(6.dp)
-                                .clip(CircleShape)
-                        )
 
-                        // Rating stars
-                        Row {
+                        // Actions column
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            IconButton(onClick = { viewModel.toggleDonghuaFavorite(item) }, modifier = Modifier.size(32.dp)) {
+                                Icon(
+                                    imageVector = if (item.isFavorite) Icons.Filled.Star else Icons.Outlined.Star,
+                                    contentDescription = "Favorit",
+                                    tint = if (item.isFavorite) WarningAmber else MaterialTheme.colorScheme.outline,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            IconButton(onClick = {
+                                editDonghuaItem = item
+                                donghuaTitle = item.title
+                                donghuaCoverUrl = item.coverUrl ?: ""
+                                donghuaTotal = item.totalEpisodes.toString()
+                                donghuaCurrent = item.currentEpisode.toString()
+                                donghuaStatus = item.status
+                                donghuaRating = item.rating
+                                donghuaFav = item.isFavorite
+                            }, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Outlined.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                            }
+                            IconButton(onClick = { viewModel.deleteDonghua(item) }, modifier = Modifier.size(32.dp)) {
+                                Icon(Icons.Outlined.Delete, contentDescription = "Hapus", tint = DangerRed, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Rating stars (smaller)
+                        Row(modifier = Modifier.weight(1f)) {
                             for (i in 1..5) {
                                 Icon(
                                     imageVector = Icons.Outlined.Star,
-                                    contentDescription = "Rating Star",
+                                    contentDescription = null,
                                     tint = if (i <= item.rating) WarningAmber else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                                    modifier = Modifier.size(16.dp)
+                                    modifier = Modifier.size(14.dp)
                                 )
                             }
                         }
 
-                        // Episode increment button
                         Button(
                             onClick = { viewModel.incrementDonghua(item) },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.height(32.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), contentColor = MaterialTheme.colorScheme.primary),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(8.dp)
                         ) {
-                            Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah Episode")
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Nonton 1 Episode Lagi", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Icon(imageVector = Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Nonton", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
