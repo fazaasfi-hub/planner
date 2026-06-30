@@ -1,0 +1,13 @@
+311:                title = "Deadline Tugas: ${task.subject}",
+312:                message = "Tugas '${task.text}' harus selesai hari ini!"
+718:                        Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tugas")
+720:                        Text("Tugas Baru")
+860:                            title = "Total Tugas",
+917:                        TargetBar(label = "Belajar", current = "$studyHours jam", target = "10 jam", pct = (studyHours / 10.0).toFloat(), color = MaterialTheme.colorScheme.primary)
+1672:                    Text(text = "Tugas / PR", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
+1678:                        label = { Text("Deskripsi Tugas...") },
+1741:                        Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah Tugas")
+1743:                        Text("Tambah Tugas")
+1836:                                        Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus Tugas", tint = DangerRed)
+2100:            title = { Text("Hapus Tugas/PR") },
+4102:                        text = "Penyelesaian Tugas / PR",

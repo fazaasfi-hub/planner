@@ -36,7 +36,7 @@ class MainActivity : ComponentActivity() {
   private val requestPermissionLauncher = registerForActivityResult(
     ActivityResultContracts.RequestPermission()
   ) { isGranted: Boolean ->
-    // Handle permission result
+    // Handle permission result if needed
   }
 
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -62,6 +62,7 @@ class MainActivity : ComponentActivity() {
     setContent {
       var isDarkTheme by rememberSaveable { mutableStateOf(true) }
 
+      // Instantiate ViewModel with Simple Factory Injection
       val viewModel: PlannerViewModel by viewModels {
         PlannerViewModelFactory(repository, prefManager)
       }

@@ -25,7 +25,8 @@ class TransactionNotificationListener : NotificationListenerService() {
         if (sbn == null) return
 
         val packageName = sbn.packageName
-        // Mendeteksi notifikasi resmi dari aplikasi DANA (id.dana)
+        // Check if the notification comes from DANA (official package name: id.dana)
+        // For testing, we can also check for test notification triggers
         if (packageName == "id.dana" || packageName == applicationContext.packageName) {
             val extras = sbn.notification.extras
             val title = (extras.getCharSequence(Notification.EXTRA_TITLE) ?: extras.getString(Notification.EXTRA_TITLE) ?: "").toString()
@@ -40,7 +41,7 @@ class TransactionNotificationListener : NotificationListenerService() {
     private fun parseAndInsertTransaction(title: String, text: String) {
         val fullText = "$title $text"
         
-        // Mencocokkan pola nominal Rupiah (contoh: Rp 50.000 atau Rp500.000)
+        // Match Rp amounts (e.g., Rp 50.000, Rp500.000, Rp 1.250.000)
         val rpPattern = Pattern.compile("Rp\\s*([0-9.,]+)")
         val matcher = rpPattern.matcher(fullText)
         
@@ -52,11 +53,14 @@ class TransactionNotificationListener : NotificationListenerService() {
 
             val isExpenseExplicit = lowerText.contains("berhasil kirim") ||
                                     lowerText.contains("berhasil transfer ke") ||
-                                    lowerText.contains("transfer ke") ||
+                                    lowerText.contains("transfer ke ") ||
                                     lowerText.contains("pembayaran") ||
                                     lowerText.contains("berhasil bayar") ||
                                     lowerText.contains("telah dibayar") ||
-                                    lowerText.contains("ditarik")
+                                    lowerText.contains("ditarik") ||
+                                    lowerText.contains("kirim uang") ||
+                                    lowerText.contains("berhasil bayar") ||
+                                    lowerText.contains("berhasil kirim")
 
             val isIncomeExplicit = lowerText.contains("menerima") ||
                                    lowerText.contains("diterima") ||
@@ -70,15 +74,21 @@ class TransactionNotificationListener : NotificationListenerService() {
                                    lowerText.contains("transfer dari") ||
                                    lowerText.contains("dana kaget") ||
                                    lowerText.contains("cashback") ||
-                                   lowerText.contains("refund")
+                                   lowerText.contains("refund") ||
+                                   lowerText.contains("uang masuk") ||
+                                   lowerText.contains("berhasil masuk") ||
+                                   lowerText.contains("terima transfer") ||
+                                   lowerText.contains("dari ") // if it's from someone, it's usually income
 
-            val type = if (isIncomeExplicit && !isExpenseExplicit) "income" else "expense"
-            
+            // If it contains both, we need to be careful. But 'dari' strongly implies income.
+            val type = if (isIncomeExplicit) "income" else if (isExpenseExplicit) "expense" else "income" // Defaulting ambiguous things to income since user complained about false expenses.
+
+            // Clean up the description
             val description = when {
-                lowerText.contains("isi saldo") || lowerText.contains("top up") -> "Top Up Saldo DANA (Otomatis)"
+                type == "income" && (lowerText.contains("isi saldo") || lowerText.contains("top up")) -> "Top Up Saldo DANA (Otomatis)"
                 type == "income" -> "DANA Masuk (Otomatis)"
-                lowerText.contains("pembayaran") || lowerText.contains("bayar") -> "Pembayaran DANA (Otomatis)"
-                lowerText.contains("kirim") || lowerText.contains("transfer ke") || lowerText.contains("transfer") -> "Transfer DANA (Otomatis)"
+                type == "expense" && (lowerText.contains("pembayaran") || lowerText.contains("bayar")) -> "Pembayaran DANA (Otomatis)"
+                type == "expense" && (lowerText.contains("kirim") || lowerText.contains("transfer")) -> "Transfer DANA (Otomatis)"
                 else -> "Transaksi DANA (Otomatis)"
             }
 

@@ -59,6 +59,7 @@ import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import java.util.*
 import java.text.SimpleDateFormat
+import java.text.NumberFormat
 import com.example.data.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
@@ -371,7 +372,7 @@ fun PlannerApp(viewModel: PlannerViewModel, isDarkTheme: Boolean, onThemeToggle:
                 // Drawer Navigation Items
                 val menuItems = listOf(
                     Triple(Screen.Dashboard, "Dashboard", Icons.Outlined.Home),
-                    Triple(Screen.Study, "Belajar & Tugas", Icons.Outlined.School),
+                    Triple(Screen.Study, "Belajar & Tugas", Icons.Outlined.Event),
                     Triple(Screen.Workout, "Olahraga", Icons.Outlined.FitnessCenter),
                     Triple(Screen.Saving, "Nabung", Icons.Outlined.Savings),
                     Triple(Screen.Donghua, "Donghua Tracker", Icons.Outlined.Movie),
@@ -526,7 +527,7 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
     val workoutLogs by viewModel.workoutLogs.collectAsStateWithLifecycle()
     val donghuaItems by viewModel.donghuaItems.collectAsStateWithLifecycle()
     val savingGoals by viewModel.savingGoals.collectAsStateWithLifecycle()
-    val notes by viewModel.notes.collectAsStateWithLifecycle()
+    val pomodoroCompleted by viewModel.pomodoroCompleted.collectAsStateWithLifecycle()
 
     val weatherInfo by viewModel.weatherInfo.collectAsStateWithLifecycle()
     val weatherLoading by viewModel.weatherLoading.collectAsStateWithLifecycle()
@@ -559,8 +560,6 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
     val totalSavingsAmount = remember(savingGoals) { savingGoals.sumOf { it.currentAmount } }
     val targetSavingsAmount = remember(savingGoals) { savingGoals.sumOf { it.targetAmount } }
     val savingsPct = if (targetSavingsAmount > 0) (totalSavingsAmount * 100) / targetSavingsAmount else 0
-
-    val totalNotes = remember(notes) { notes.size }
 
     // Calculate total study hours (difference in minutes)
     val studyHours = remember(schedules) {
@@ -892,10 +891,10 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
                             badgeBg = IndigoTertiary
                         )
                         StatCardPremium(
-                            title = "Catatan",
-                            value = "$totalNotes",
-                            subtitle = "Ditulis sejauh ini",
-                            icon = Icons.Outlined.Notes,
+                            title = "Sesi Pomodoro",
+                            value = "$pomodoroCompleted",
+                            subtitle = "Sesi fokus selesai",
+                            icon = Icons.Outlined.Timer,
                             modifier = Modifier.weight(1f),
                             badgeBg = MaterialTheme.colorScheme.tertiary
                         )
@@ -1251,11 +1250,13 @@ fun StudyScreen(viewModel: PlannerViewModel) {
     val schedules by viewModel.schedules.collectAsStateWithLifecycle()
     val timeSlots by viewModel.timeSlots.collectAsStateWithLifecycle()
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
-    val notes by viewModel.notes.collectAsStateWithLifecycle()
 
     var showAddSlotDialog by remember { mutableStateOf(false) }
     var showAddScheduleDialog by remember { mutableStateOf(false) }
-    var showAddNoteDialog by remember { mutableStateOf(false) }
+
+    var slotToDelete by remember { mutableStateOf<TimeSlot?>(null) }
+    var scheduleToDelete by remember { mutableStateOf<StudySchedule?>(null) }
+    var taskToDelete by remember { mutableStateOf<StudyTask?>(null) }
 
     // Dialog state variables
     var slotStart by remember { mutableStateOf("07:00") }
@@ -1272,10 +1273,6 @@ fun StudyScreen(viewModel: PlannerViewModel) {
     var taskDeadline by remember { mutableStateOf("") }
     var taskFilter by remember { mutableStateOf("all") }
     var taskSortBy by remember { mutableStateOf("newest") } // newest, deadline, alpha
-
-    var noteTitle by remember { mutableStateOf("") }
-    var noteContent by remember { mutableStateOf("") }
-    var noteTags by remember { mutableStateOf("") }
 
     val scrollState = rememberScrollState()
 
@@ -1429,32 +1426,27 @@ fun StudyScreen(viewModel: PlannerViewModel) {
             }
         }
 
-        // ADD TASK SECTION
+        // INPUT TUGAS CARD
         StaggeredEntrance(index = 1) {
-            GlassyCard(
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                accentColor = MaterialTheme.colorScheme.primary
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Tambah Tugas Baru",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
                         value = taskText,
                         onValueChange = { taskText = it },
-                        label = { Text("Nama Tugas / PR") },
+                        label = { Text("Deskripsi Tugas...") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         leadingIcon = { Icon(Icons.Outlined.Edit, null) }
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         OutlinedTextField(
                             value = taskSubject,
                             onValueChange = { taskSubject = it },
@@ -1463,7 +1455,7 @@ fun StudyScreen(viewModel: PlannerViewModel) {
                             shape = RoundedCornerShape(12.dp),
                             leadingIcon = { Icon(Icons.Outlined.Book, null) }
                         )
-                        
+
                         val context = androidx.compose.ui.platform.LocalContext.current
                         val calendar = Calendar.getInstance()
                         val datePickerDialog = android.app.DatePickerDialog(
@@ -1482,7 +1474,7 @@ fun StudyScreen(viewModel: PlannerViewModel) {
                             value = taskDeadline,
                             onValueChange = { },
                             label = { Text("Deadline (Klik)") },
-                            modifier = Modifier.weight(1f).clickable { datePickerDialog.show() },
+                            modifier = Modifier.weight(1.2f).clickable { datePickerDialog.show() },
                             shape = RoundedCornerShape(12.dp),
                             leadingIcon = { Icon(Icons.Outlined.Event, null) },
                             readOnly = true,
@@ -1496,9 +1488,7 @@ fun StudyScreen(viewModel: PlannerViewModel) {
                             )
                         )
                     }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
+
                     Button(
                         onClick = {
                             if (taskText.isNotBlank()) {
@@ -1511,16 +1501,126 @@ fun StudyScreen(viewModel: PlannerViewModel) {
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(Icons.Default.Add, null)
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(imageVector = Icons.Outlined.Add, contentDescription = "Simpan Tugas")
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text("Simpan Tugas")
                     }
                 }
             }
         }
 
-        // STUDY SCHEDULE TABLE CARD
+        // TASKS LIST / DAFTAR TUGAS CARD
         StaggeredEntrance(index = 2) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(text = "Tugas / PR", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
+
+                    // Filter Buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf("all" to "ALL", "pending" to "PENDING", "done" to "DONE").forEach { (filterVal, label) ->
+                            FilterChip(
+                                selected = taskFilter == filterVal,
+                                onClick = { taskFilter = filterVal },
+                                label = { Text("$label (${if (filterVal == "pending") tasks.count { !it.isDone } else if (filterVal == "done") tasks.count { it.isDone } else tasks.size})", fontSize = 11.sp) }
+                            )
+                        }
+                    }
+
+                    // Sorting Buttons (FEATURE 7)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Urutan:", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                        listOf("newest" to "Terbaru", "deadline" to "Tenggat", "alpha" to "Nama A-Z").forEach { (sortVal, label) ->
+                            FilterChip(
+                                selected = taskSortBy == sortVal,
+                                onClick = { taskSortBy = sortVal },
+                                label = { Text(label, fontSize = 10.sp) }
+                            )
+                        }
+                    }
+
+                    // Tasks List
+                    val filteredTasks = remember(tasks, taskFilter, taskSortBy) {
+                        val base = when (taskFilter) {
+                            "pending" -> tasks.filter { !it.isDone }
+                            "done" -> tasks.filter { it.isDone }
+                            else -> tasks
+                        }
+                        when (taskSortBy) {
+                            "deadline" -> base.sortedBy { if (it.deadline.isBlank()) "9999-99-99" else it.deadline }
+                            "alpha" -> base.sortedBy { it.text.lowercase() }
+                            else -> base.sortedByDescending { it.createdAt }
+                        }
+                    }
+
+                    if (filteredTasks.isEmpty()) {
+                        Text(
+                            text = "Tidak ada tugas",
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    } else {
+                        Column(
+                            modifier = Modifier.animateContentSize(animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow)),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            filteredTasks.forEachIndexed { idx, task ->
+                                StaggeredEntrance(index = 3 + idx) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                                            .padding(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Checkbox(
+                                            checked = task.isDone,
+                                            onCheckedChange = { viewModel.toggleTask(task) }
+                                        )
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = task.text,
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                textDecoration = if (task.isDone) TextDecoration.LineThrough else null,
+                                                color = if (task.isDone) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                                if (task.subject.isNotBlank()) {
+                                                    Text(text = "📚 ${task.subject}", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                                                }
+                                                if (task.deadline.isNotBlank()) {
+                                                    Text(text = "📅 ${task.deadline}", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary)
+                                                }
+                                            }
+                                        }
+                                        IconButton(onClick = { taskToDelete = task }) {
+                                            Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus Tugas", tint = DangerRed)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // STUDY SCHEDULE TABLE CARD ("Jadwal Pelajaran (Grid)")
+        StaggeredEntrance(index = 3) {
             GlassyCard(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
@@ -1533,8 +1633,11 @@ fun StudyScreen(viewModel: PlannerViewModel) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("📅", fontSize = 20.sp)
-                            Text(text = "Jadwal Pelajaran", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text("📊", fontSize = 20.sp)
+                            Column {
+                                Text(text = "Jadwal Pelajaran (Grid)", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Text(text = "Kelola jadwal dalam format tabel ala Excel", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             IconButton(onClick = { showAddSlotDialog = true }) {
@@ -1560,12 +1663,12 @@ fun StudyScreen(viewModel: PlannerViewModel) {
                         val days = remember { DAYS_OF_WEEK.take(5) }
                         val timeColWidth = 90.dp
                         val dayColWidth = 115.dp
-                        val scrollState = rememberScrollState()
+                        val scrollStateGrid = rememberScrollState()
 
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .horizontalScroll(scrollState)
+                                .horizontalScroll(scrollStateGrid)
                         ) {
                             // Table Header Row
                             Row(
@@ -1575,13 +1678,13 @@ fun StudyScreen(viewModel: PlannerViewModel) {
                                     .padding(vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // First Column Header: Jam
+                                // First Column Header: WAKTU
                                 Box(
                                     modifier = Modifier.width(timeColWidth),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = "Jam",
+                                        text = "WAKTU",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 12.sp,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -1612,362 +1715,151 @@ fun StudyScreen(viewModel: PlannerViewModel) {
                             }
 
                             sortedSlots.forEachIndexed { rowIndex, slot ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(
-                                        if (rowIndex % 2 == 1) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
-                                        else Color.Transparent
-                                    )
-                                    .padding(vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // Time Slot Column
-                                Column(
-                                    modifier = Modifier.width(timeColWidth),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Center
-                                ) {
-                                    Text(
-                                        text = "${slot.startTime}\n-\n${slot.endTime}",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp,
-                                        textAlign = TextAlign.Center,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        lineHeight = 14.sp
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    IconButton(
-                                        onClick = { viewModel.deleteTimeSlot(slot) },
-                                        modifier = Modifier.size(24.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Outlined.Delete,
-                                            contentDescription = "Hapus Slot",
-                                            tint = DangerRed.copy(alpha = 0.7f),
-                                            modifier = Modifier.size(13.dp)
-                                        )
-                                    }
-                                }
-
-                                // Day Columns
-                                days.forEach { day ->
-                                    val match = schedules.find {
-                                        it.day == day && it.startTime < slot.endTime && it.endTime > slot.startTime
-                                    }
-
-                                    Box(
-                                        modifier = Modifier
-                                            .width(dayColWidth)
-                                            .padding(horizontal = 4.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        if (match != null) {
-                                            val colorHex = match.colorHex
-                                            val itemColor = remember(colorHex) {
-                                                try {
-                                                    Color(android.graphics.Color.parseColor(colorHex))
-                                                } catch (e: Exception) {
-                                                    Color(0xFF6200EE)
-                                                }
-                                            }
-
-                                            Card(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .height(68.dp),
-                                                shape = RoundedCornerShape(10.dp),
-                                                colors = CardDefaults.cardColors(containerColor = itemColor.copy(alpha = 0.12f)),
-                                                border = BorderStroke(1.dp, itemColor.copy(alpha = 0.4f))
-                                            ) {
-                                                Column(
-                                                    modifier = Modifier
-                                                        .fillMaxSize()
-                                                        .padding(4.dp),
-                                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                                    verticalArrangement = Arrangement.SpaceBetween
-                                                ) {
-                                                    IconButton(
-                                                        onClick = { viewModel.deleteSchedule(match) },
-                                                        modifier = Modifier
-                                                            .align(Alignment.End)
-                                                            .size(14.dp)
-                                                    ) {
-                                                        Icon(
-                                                            imageVector = Icons.Outlined.Close,
-                                                            contentDescription = "Hapus",
-                                                            tint = DangerRed,
-                                                            modifier = Modifier.size(10.dp)
-                                                        )
-                                                    }
-
-                                                    Text(
-                                                        text = match.subjectName,
-                                                        fontWeight = FontWeight.Bold,
-                                                        fontSize = 11.sp,
-                                                        textAlign = TextAlign.Center,
-                                                        color = itemColor,
-                                                        maxLines = 2,
-                                                        overflow = TextOverflow.Ellipsis,
-                                                        modifier = Modifier
-                                                            .padding(bottom = 6.dp)
-                                                            .align(Alignment.CenterHorizontally)
-                                                    )
-                                                    
-                                                    Spacer(modifier = Modifier.height(1.dp))
-                                                }
-                                            }
-                                        } else {
-                                            // Empty cell
-                                            Box(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .height(68.dp)
-                                                    .clip(RoundedCornerShape(10.dp))
-                                                    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.02f)),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    text = "-",
-                                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
-                                                    fontSize = 11.sp
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-                        }
-                    }
-                }
-            }
-        }
-
-        // TASKS CHECKLIST CARD
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(text = "Tugas / PR", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-
-                // Input form
-                OutlinedTextField(
-                    value = taskText,
-                    onValueChange = { taskText = it },
-                    label = { Text("Deskripsi Tugas...") },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedTextField(
-                        value = taskSubject,
-                        onValueChange = { taskSubject = it },
-                        label = { Text("Mata Pelajaran") },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    OutlinedTextField(
-                        value = taskDeadline,
-                        onValueChange = { taskDeadline = it },
-                        label = { Text("Deadline (e.g. 2026-06-30)") },
-                        modifier = Modifier.weight(1.2f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                }
-
-                Button(
-                    onClick = {
-                        viewModel.addTask(taskText, taskSubject, taskDeadline)
-                        taskText = ""
-                        taskSubject = ""
-                        taskDeadline = ""
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah Tugas")
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Tambah Tugas")
-                }
-
-                Divider()
-
-                // Filter Buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    listOf("all" to "Semua", "pending" to "Belum", "done" to "Selesai").forEach { (filterVal, label) ->
-                        FilterChip(
-                            selected = taskFilter == filterVal,
-                            onClick = { taskFilter = filterVal },
-                            label = { Text(filterVal.uppercase() + " (" + (if (filterVal == "pending") tasks.count { !it.isDone } else if (filterVal == "done") tasks.count { it.isDone } else tasks.size) + ")", fontSize = 11.sp) }
-                        )
-                    }
-                }
-
-                // Sorting Buttons (FEATURE 7)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Urutan:", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
-                    listOf("newest" to "Terbaru", "deadline" to "Tenggat", "alpha" to "Nama A-Z").forEach { (sortVal, label) ->
-                        FilterChip(
-                            selected = taskSortBy == sortVal,
-                            onClick = { taskSortBy = sortVal },
-                            label = { Text(label, fontSize = 10.sp) }
-                        )
-                    }
-                }
-
-                // Tasks List
-                val filteredTasks = remember(tasks, taskFilter, taskSortBy) {
-                    val base = when (taskFilter) {
-                        "pending" -> tasks.filter { !it.isDone }
-                        "done" -> tasks.filter { it.isDone }
-                        else -> tasks
-                    }
-                    when (taskSortBy) {
-                        "deadline" -> base.sortedBy { if (it.deadline.isBlank()) "9999-99-99" else it.deadline }
-                        "alpha" -> base.sortedBy { it.text.lowercase() }
-                        else -> base.sortedByDescending { it.createdAt }
-                    }
-                }
-
-                if (filteredTasks.isEmpty()) {
-                    Text(
-                        text = "Tidak ada tugas",
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
-                } else {
-                    Column(
-                        modifier = Modifier.animateContentSize(animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow)),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        filteredTasks.forEachIndexed { idx, task ->
-                            StaggeredEntrance(index = 3 + idx) {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                                        .padding(8.dp),
+                                        .background(
+                                            if (rowIndex % 2 == 1) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+                                            else Color.Transparent
+                                        )
+                                        .padding(vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Checkbox(
-                                        checked = task.isDone,
-                                        onCheckedChange = { viewModel.toggleTask(task) }
-                                    )
-                                    Column(modifier = Modifier.weight(1f)) {
+                                    // Time Slot Column
+                                    Column(
+                                        modifier = Modifier.width(timeColWidth),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.Center
+                                    ) {
                                         Text(
-                                            text = task.text,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            textDecoration = if (task.isDone) TextDecoration.LineThrough else null,
-                                            color = if (task.isDone) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurface
+                                            text = "${slot.startTime}\n-\n${slot.endTime}",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.sp,
+                                            textAlign = TextAlign.Center,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            lineHeight = 14.sp
                                         )
-                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                            if (task.subject.isNotBlank()) {
-                                                Text(text = "📚 ${task.subject}", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
-                                            }
-                                            if (task.deadline.isNotBlank()) {
-                                                Text(text = "📅 ${task.deadline}", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary)
-                                            }
-                                        }
-                                    }
-                                    IconButton(onClick = { viewModel.deleteTask(task) }) {
-                                        Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus Tugas", tint = DangerRed)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // STUDY NOTES CARD
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(text = "Catatan Belajar", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    IconButton(onClick = { showAddNoteDialog = true }) {
-                        Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah Catatan")
-                    }
-                }
-
-                if (notes.isEmpty()) {
-                    Text(
-                        text = "Belum ada catatan",
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                    )
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        notes.forEachIndexed { idx, note ->
-                            StaggeredEntrance(index = 5 + idx) {
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.05f)),
-                                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f))
-                                ) {
-                                    Column(modifier = Modifier.padding(12.dp)) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.Top
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        IconButton(
+                                            onClick = { slotToDelete = slot },
+                                            modifier = Modifier.size(24.dp)
                                         ) {
-                                            Text(text = note.title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                            IconButton(onClick = { viewModel.deleteNote(note) }, modifier = Modifier.size(24.dp)) {
-                                                Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Hapus", tint = DangerRed, modifier = Modifier.size(16.dp))
-                                            }
+                                            Icon(
+                                                imageVector = Icons.Outlined.Delete,
+                                                contentDescription = "Hapus Slot",
+                                                tint = DangerRed.copy(alpha = 0.7f),
+                                                modifier = Modifier.size(13.dp)
+                                            )
                                         }
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(text = note.content, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
-                                        if (note.tags.isNotBlank()) {
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                            Row(
-                                                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                            ) {
-                                                note.tags.split(",").forEach { tag ->
-                                                    if (tag.trim().isNotBlank()) {
-                                                        Box(
+                                    }
+
+                                    // Day Columns
+                                    days.forEach { day ->
+                                        val match = schedules.find {
+                                            it.day == day && it.startTime < slot.endTime && it.endTime > slot.startTime
+                                        }
+
+                                        Box(
+                                            modifier = Modifier
+                                                .width(dayColWidth)
+                                                .padding(horizontal = 4.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            if (match != null) {
+                                                val colorHex = match.colorHex
+                                                val itemColor = remember(colorHex) {
+                                                    try {
+                                                        Color(android.graphics.Color.parseColor(colorHex))
+                                                    } catch (e: Exception) {
+                                                        Color(0xFF6200EE)
+                                                    }
+                                                }
+
+                                                Card(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .height(68.dp),
+                                                    shape = RoundedCornerShape(10.dp),
+                                                    colors = CardDefaults.cardColors(containerColor = itemColor.copy(alpha = 0.12f)),
+                                                    border = BorderStroke(1.dp, itemColor.copy(alpha = 0.4f))
+                                                ) {
+                                                    Column(
+                                                        modifier = Modifier
+                                                            .fillMaxSize()
+                                                            .padding(4.dp),
+                                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                                        verticalArrangement = Arrangement.SpaceBetween
+                                                    ) {
+                                                        IconButton(
+                                                            onClick = { scheduleToDelete = match },
                                                             modifier = Modifier
-                                                                .clip(RoundedCornerShape(6.dp))
-                                                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
-                                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                                                .align(Alignment.End)
+                                                                .size(20.dp)
                                                         ) {
-                                                            Text(text = "#${tag.trim()}", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                                            Icon(
+                                                                imageVector = Icons.Outlined.Close,
+                                                                contentDescription = "Hapus Jadwal",
+                                                                tint = DangerRed,
+                                                                modifier = Modifier.size(14.dp)
+                                                            )
                                                         }
+
+                                                        Text(
+                                                            text = match.subjectName,
+                                                            fontWeight = FontWeight.Bold,
+                                                            fontSize = 11.sp,
+                                                            textAlign = TextAlign.Center,
+                                                            color = itemColor,
+                                                            maxLines = 2,
+                                                            overflow = TextOverflow.Ellipsis,
+                                                            modifier = Modifier
+                                                                .padding(bottom = 6.dp)
+                                                                .align(Alignment.CenterHorizontally)
+                                                        )
+
+                                                        Spacer(modifier = Modifier.height(1.dp))
+                                                    }
+                                                }
+                                            } else {
+                                                // Empty cell with clickable "+" and "Kosong"
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .height(68.dp)
+                                                        .clip(RoundedCornerShape(10.dp))
+                                                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.02f))
+                                                        .clickable {
+                                                            schedDay = day
+                                                            schedStart = slot.startTime
+                                                            schedEnd = slot.endTime
+                                                            showAddScheduleDialog = true
+                                                        },
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Column(
+                                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                                        verticalArrangement = Arrangement.Center
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Outlined.Add,
+                                                            contentDescription = null,
+                                                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
+                                                            modifier = Modifier.size(16.dp)
+                                                        )
+                                                        Spacer(modifier = Modifier.height(2.dp))
+                                                        Text(
+                                                            text = "Kosong",
+                                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
+                                                            fontSize = 10.sp,
+                                                            fontWeight = FontWeight.Medium
+                                                        )
                                                     }
                                                 }
                                             }
                                         }
                                     }
                                 }
+                                Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                             }
                         }
                     }
@@ -2071,39 +1963,66 @@ fun StudyScreen(viewModel: PlannerViewModel) {
         }
     }
 
-    // DIALOG: ADD NOTE
-    if (showAddNoteDialog) {
-        Dialog(onDismissRequest = { showAddNoteDialog = false }) {
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text("Tambah Catatan Baru", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    OutlinedTextField(value = noteTitle, onValueChange = { noteTitle = it }, label = { Text("Judul Catatan") }, modifier = Modifier.fillMaxWidth())
-                    OutlinedTextField(value = noteContent, onValueChange = { noteContent = it }, label = { Text("Isi Catatan") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
-                    OutlinedTextField(value = noteTags, onValueChange = { noteTags = it }, label = { Text("Tag (pisahkan dengan koma)") }, modifier = Modifier.fillMaxWidth())
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(onClick = { showAddNoteDialog = false }) { Text("Batal") }
-                        Button(onClick = {
-                            viewModel.addNote(noteTitle, noteContent, noteTags)
-                            noteTitle = ""
-                            noteContent = ""
-                            noteTags = ""
-                            showAddNoteDialog = false
-                        }) { Text("Simpan") }
-                    }
-                }
+    // DELETE CONFIRMATION DIALOGS
+    if (slotToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { slotToDelete = null },
+            title = { Text("Hapus Slot Waktu") },
+            text = { Text("Apakah Anda yakin ingin menghapus slot waktu ini? Jadwal pelajaran pada slot ini tidak akan terlihat lagi.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        slotToDelete?.let { viewModel.deleteTimeSlot(it) }
+                        slotToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = DangerRed)
+                ) { Text("Hapus") }
+            },
+            dismissButton = {
+                TextButton(onClick = { slotToDelete = null }) { Text("Batal") }
             }
-        }
+        )
     }
-}
+
+    if (scheduleToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { scheduleToDelete = null },
+            title = { Text("Hapus Jadwal Pelajaran") },
+            text = { Text("Apakah Anda yakin ingin menghapus jadwal pelajaran ${scheduleToDelete?.subjectName}?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scheduleToDelete?.let { viewModel.deleteSchedule(it) }
+                        scheduleToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = DangerRed)
+                ) { Text("Hapus") }
+            },
+            dismissButton = {
+                TextButton(onClick = { scheduleToDelete = null }) { Text("Batal") }
+            }
+        )
+    }
+
+    if (taskToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { taskToDelete = null },
+            title = { Text("Hapus Tugas/PR") },
+            text = { Text("Apakah Anda yakin ingin menghapus tugas ini?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        taskToDelete?.let { viewModel.deleteTask(it) }
+                        taskToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = DangerRed)
+                ) { Text("Hapus") }
+            },
+            dismissButton = {
+                TextButton(onClick = { taskToDelete = null }) { Text("Batal") }
+            }
+        )
+    }
 }
 
 // ============================================================
@@ -4069,8 +3988,7 @@ fun ChartScreen(viewModel: PlannerViewModel) {
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
     val schedules by viewModel.schedules.collectAsStateWithLifecycle()
     val workoutLogs by viewModel.workoutLogs.collectAsStateWithLifecycle()
-
-    var activeChartTab by remember { mutableStateOf("tasks") }
+    val transactions by viewModel.transactions.collectAsStateWithLifecycle()
 
     val scrollState = rememberScrollState()
 
@@ -4081,7 +3999,7 @@ fun ChartScreen(viewModel: PlannerViewModel) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Tab Headers
+        // 1. CHART: TASKS
         StaggeredEntrance(index = 0) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -4089,25 +4007,71 @@ fun ChartScreen(viewModel: PlannerViewModel) {
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp)
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    listOf("tasks" to "Tugas PR", "subjects" to "Mata Pelajaran", "workouts" to "Olahraga").forEach { (tabVal, label) ->
-                        FilterChip(
-                            selected = activeChartTab == tabVal,
-                            onClick = { activeChartTab = tabVal },
-                            label = { Text(label, fontWeight = FontWeight.Bold) }
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Penyelesaian Tugas / PR",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                    Divider()
+                    val total = tasks.size
+                    val done = tasks.count { it.isDone }
+                    val pending = total - done
+
+                    if (total == 0) {
+                        Text(
+                            text = "Belum ada tugas untuk diredistribusikan.",
+                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                         )
+                    } else {
+                        // Doughnut Chart using custom canvas
+                        val doneColor = SuccessGreen
+                        val pendingColor = DangerRed
+                        val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                            Canvas(modifier = Modifier.size(200.dp)) {
+                                val strokeWidth = 30.dp.toPx()
+                                val doneAngle = (done.toFloat() / total.toFloat()) * 360f
+                                val pendingAngle = 360f - doneAngle
+
+                                drawArc(
+                                    color = doneColor,
+                                    startAngle = -90f,
+                                    sweepAngle = doneAngle,
+                                    useCenter = false,
+                                    style = Stroke(width = strokeWidth)
+                                )
+                                drawArc(
+                                    color = pendingColor,
+                                    startAngle = -90f + doneAngle,
+                                    sweepAngle = pendingAngle,
+                                    useCenter = false,
+                                    style = Stroke(width = strokeWidth)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Box(modifier = Modifier.size(12.dp).background(doneColor, CircleShape))
+                                    Text("Selesai: $done", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Box(modifier = Modifier.size(12.dp).background(pendingColor, CircleShape))
+                                    Text("Belum: $pending", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // CHART DRAWING WINDOW
+        // 2. CHART: SUBJECTS
         StaggeredEntrance(index = 1) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -4117,187 +4081,216 @@ fun ChartScreen(viewModel: PlannerViewModel) {
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        text = when (activeChartTab) {
-                            "tasks" -> "Penyelesaian Tugas / PR"
-                            "subjects" -> "Distribusi Mata Pelajaran"
-                            else -> "Volume Olahraga & Kalori"
-                        },
+                        text = "Distribusi Mata Pelajaran",
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )
+                    Divider()
+                    val subjectsCount = remember(schedules) {
+                        val map = mutableMapOf<String, Int>()
+                        schedules.forEach {
+                            map[it.subjectName] = (map[it.subjectName] ?: 0) + 1
+                        }
+                        map
+                    }
 
+                    if (subjectsCount.isEmpty()) {
+                        Text(
+                            text = "Belum ada mata pelajaran di jadwal.",
+                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    } else {
+                        // Display Bar charts of Subjects count
+                        val totalLessons = subjectsCount.values.sum()
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            subjectsCount.toList().forEachIndexed { idx, (sub, count) ->
+                                StaggeredEntrance(index = 2 + idx) {
+                                    val pct = count.toFloat() / totalLessons.toFloat()
+                                    Column {
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text(text = sub, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                            Text(text = "$count sesi (${Math.round(pct * 100)}%)", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        LinearProgressIndicator(
+                                            progress = pct,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            trackColor = MaterialTheme.colorScheme.outlineVariant,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(8.dp)
+                                                .clip(CircleShape)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. CHART: WORKOUTS
+        StaggeredEntrance(index = 2) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Volume Olahraga & Kalori",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                    Divider()
+                    // Workouts Line/Bar Graph
+                    val calPerDay = remember(workoutLogs) {
+                        val sdf = SimpleDateFormat("dd/MM", Locale.getDefault())
+                        val list = mutableListOf<Pair<String, Int>>()
+                        val calendar = Calendar.getInstance()
+                        calendar.add(Calendar.DAY_OF_YEAR, -6)
+                        for (i in 0..6) {
+                            val dayStr = sdf.format(calendar.time)
+                            val startOfDay = calendar.clone() as Calendar
+                            startOfDay.set(Calendar.HOUR_OF_DAY, 0)
+                            startOfDay.set(Calendar.MINUTE, 0)
+                            startOfDay.set(Calendar.SECOND, 0)
+                            val endOfDay = calendar.clone() as Calendar
+                            endOfDay.set(Calendar.HOUR_OF_DAY, 23)
+                            endOfDay.set(Calendar.MINUTE, 59)
+                            endOfDay.set(Calendar.SECOND, 59)
+
+                            val dayCal = workoutLogs.filter {
+                                it.date in startOfDay.timeInMillis..endOfDay.timeInMillis
+                            }.sumOf { it.caloriesBurned }
+
+                            list.add(Pair(dayStr, dayCal))
+                            calendar.add(Calendar.DAY_OF_YEAR, 1)
+                        }
+                        list
+                    }
+
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("Total Kalori Dibakar Per Hari", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+
+                        // Custom Bar Column Draw
+                        Canvas(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(150.dp)
+                        ) {
+                            val maxVal = Math.max(1, calPerDay.maxOf { it.second })
+                            val spacing = size.width / 7.5f
+                            val barWidth = spacing * 0.5f
+
+                            calPerDay.forEachIndexed { idx, pair ->
+                                val x = (idx + 0.5f) * spacing
+                                val barHeight = (pair.second.toFloat() / maxVal.toFloat()) * (size.height - 20.dp.toPx())
+                                val y = size.height
+
+                                // Draw bar rounded line
+                                drawLine(
+                                    color = SuccessGreen,
+                                    start = Offset(x, y),
+                                    end = Offset(x, y - barHeight),
+                                    strokeWidth = barWidth,
+                                    cap = androidx.compose.ui.graphics.StrokeCap.Round
+                                )
+                            }
+                        }
+
+                        // Day markers
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            calPerDay.forEach { pair ->
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                                    Text(text = pair.first, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    Text(text = "${pair.second} kal", fontSize = 9.sp, color = SuccessGreen, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 4. CHART: BUDGET / KEUANGAN
+        StaggeredEntrance(index = 3) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Arus Kas Keuangan (Income vs Expense)",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
                     Divider()
 
-                    when (activeChartTab) {
-                        "tasks" -> {
-                            val total = tasks.size
-                            val done = tasks.count { it.isDone }
-                            val pending = total - done
+                    val income = transactions.filter { it.type == "income" }.sumOf { it.amount }
+                    val expense = transactions.filter { it.type == "expense" }.sumOf { it.amount }
+                    val totalTx = income + expense
 
-                            if (total == 0) {
-                                Text(
-                                    text = "Belum ada tugas untuk diredistribusikan.",
-                                    modifier = Modifier.fillMaxWidth().padding(32.dp),
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    if (totalTx == 0.0) {
+                        Text(
+                            text = "Belum ada transaksi keuangan.",
+                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    } else {
+                        val incomeColor = SuccessGreen
+                        val expenseColor = DangerRed
+
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                            Canvas(modifier = Modifier.size(200.dp)) {
+                                val strokeWidth = 30.dp.toPx()
+                                val incomeAngle = (income.toFloat() / totalTx.toFloat()) * 360f
+                                val expenseAngle = 360f - incomeAngle
+
+                                drawArc(
+                                    color = incomeColor,
+                                    startAngle = -90f,
+                                    sweepAngle = incomeAngle,
+                                    useCenter = false,
+                                    style = Stroke(width = strokeWidth)
                                 )
-                            } else {
-                                // Doughnut Chart using custom canvas
-                                val doneColor = SuccessGreen
-                                val pendingColor = DangerRed
-                                val onSurfaceColor = MaterialTheme.colorScheme.onSurface
-
-                                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                                    Canvas(modifier = Modifier.size(200.dp)) {
-                                        val strokeWidth = 30.dp.toPx()
-                                        val doneAngle = (done.toFloat() / total.toFloat()) * 360f
-                                        val pendingAngle = 360f - doneAngle
-
-                                        drawArc(
-                                            color = doneColor,
-                                            startAngle = -90f,
-                                            sweepAngle = doneAngle,
-                                            useCenter = false,
-                                            style = Stroke(width = strokeWidth)
-                                        )
-                                        drawArc(
-                                            color = pendingColor,
-                                            startAngle = -90f + doneAngle,
-                                            sweepAngle = pendingAngle,
-                                            useCenter = false,
-                                            style = Stroke(width = strokeWidth)
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.height(16.dp))
-
-                                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            Box(modifier = Modifier.size(12.dp).background(doneColor, CircleShape))
-                                            Text("Selesai: $done", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                        }
-                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            Box(modifier = Modifier.size(12.dp).background(pendingColor, CircleShape))
-                                            Text("Belum: $pending", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        "subjects" -> {
-                            val subjectsCount = remember(schedules) {
-                                val map = mutableMapOf<String, Int>()
-                                schedules.forEach {
-                                    map[it.subjectName] = (map[it.subjectName] ?: 0) + 1
-                                }
-                                map
-                            }
-
-                            if (subjectsCount.isEmpty()) {
-                                Text(
-                                    text = "Belum ada mata pelajaran di jadwal.",
-                                    modifier = Modifier.fillMaxWidth().padding(32.dp),
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                drawArc(
+                                    color = expenseColor,
+                                    startAngle = -90f + incomeAngle,
+                                    sweepAngle = expenseAngle,
+                                    useCenter = false,
+                                    style = Stroke(width = strokeWidth)
                                 )
-                            } else {
-                                // Display Bar charts of Subjects count
-                                val totalLessons = subjectsCount.values.sum()
-                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    subjectsCount.toList().forEachIndexed { idx, (sub, count) ->
-                                        StaggeredEntrance(index = 2 + idx) {
-                                            val pct = count.toFloat() / totalLessons.toFloat()
-                                            Column {
-                                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                                    Text(text = sub, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                                    Text(text = "$count sesi (${Math.round(pct * 100)}%)", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                                                }
-                                                Spacer(modifier = Modifier.height(4.dp))
-                                                LinearProgressIndicator(
-                                                    progress = pct,
-                                                    color = MaterialTheme.colorScheme.primary,
-                                                    trackColor = MaterialTheme.colorScheme.outlineVariant,
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .height(8.dp)
-                                                        .clip(CircleShape)
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        else -> {
-                            // Workouts Line/Bar Graph
-                            val calPerDay = remember(workoutLogs) {
-                                val sdf = SimpleDateFormat("dd/MM", Locale.getDefault())
-                                val list = mutableListOf<Pair<String, Int>>()
-                                val calendar = Calendar.getInstance()
-                                calendar.add(Calendar.DAY_OF_YEAR, -6)
-                                for (i in 0..6) {
-                                    val dayStr = sdf.format(calendar.time)
-                                    val startOfDay = calendar.clone() as Calendar
-                                    startOfDay.set(Calendar.HOUR_OF_DAY, 0)
-                                    startOfDay.set(Calendar.MINUTE, 0)
-                                    startOfDay.set(Calendar.SECOND, 0)
-                                    val endOfDay = calendar.clone() as Calendar
-                                    endOfDay.set(Calendar.HOUR_OF_DAY, 23)
-                                    endOfDay.set(Calendar.MINUTE, 59)
-                                    endOfDay.set(Calendar.SECOND, 59)
-
-                                    val dayCal = workoutLogs.filter {
-                                        it.date in startOfDay.timeInMillis..endOfDay.timeInMillis
-                                    }.sumOf { it.caloriesBurned }
-
-                                    list.add(Pair(dayStr, dayCal))
-                                    calendar.add(Calendar.DAY_OF_YEAR, 1)
-                                }
-                                list
                             }
 
-                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text("Total Kalori Dibakar Per Hari", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.height(16.dp))
 
-                                // Custom Bar Column Draw
-                                Canvas(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(150.dp)
-                                ) {
-                                    val maxVal = Math.max(1, calPerDay.maxOf { it.second })
-                                    val spacing = size.width / 7.5f
-                                    val barWidth = spacing * 0.5f
-
-                                    calPerDay.forEachIndexed { idx, pair ->
-                                        val x = (idx + 0.5f) * spacing
-                                        val barHeight = (pair.second.toFloat() / maxVal.toFloat()) * (size.height - 20.dp.toPx())
-                                        val y = size.height
-
-                                        // Draw bar rounded line
-                                        drawLine(
-                                            color = SuccessGreen,
-                                            start = Offset(x, y),
-                                            end = Offset(x, y - barHeight),
-                                            strokeWidth = barWidth,
-                                            cap = androidx.compose.ui.graphics.StrokeCap.Round
-                                        )
-                                    }
+                            Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Box(modifier = Modifier.size(12.dp).background(incomeColor, CircleShape))
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text("Pemasukan", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    val format = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
+                                    format.maximumFractionDigits = 0
+                                    Text(format.format(income), fontSize = 12.sp, color = incomeColor, fontWeight = FontWeight.SemiBold)
                                 }
-
-                                // Day markers
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    calPerDay.forEach { pair ->
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                                            Text(text = pair.first, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                            Text(text = "${pair.second} kal", fontSize = 9.sp, color = SuccessGreen, fontWeight = FontWeight.Bold)
-                                        }
-                                    }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Box(modifier = Modifier.size(12.dp).background(expenseColor, CircleShape))
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text("Pengeluaran", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    val format = NumberFormat.getCurrencyInstance(Locale("id", "ID"))
+                                    format.maximumFractionDigits = 0
+                                    Text(format.format(expense), fontSize = 12.sp, color = expenseColor, fontWeight = FontWeight.SemiBold)
                                 }
                             }
                         }

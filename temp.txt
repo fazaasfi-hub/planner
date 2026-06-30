@@ -1,0 +1,942 @@
+85:}
+97:}
+148:    } else {
+150:    }
+170:    }
+171:}
+178:    var visible by remember { mutableStateOf(false) }
+182:    }
+188:                    initialOffsetY = { it / 6 }, 
+198:    }
+199:}
+215:    } else {
+217:    }
+238:    }
+239:}
+287:}
+295:    val snackbarHostState = remember { SnackbarHostState() }
+298:    val notificationHelper = remember { NotificationHelper(context) }
+304:        }
+305:    }
+311:                title = "Deadline Tugas: ${task.subject}",
+312:                message = "Tugas '${task.text}' harus selesai hari ini!"
+320:            } catch (e: Exception) {
+322:            }
+323:        }
+324:    }
+367:                    }
+368:                }
+386:                            icon = { Icon(imageVector = icon, contentDescription = label) },
+387:                            label = { Text(text = label, fontWeight = FontWeight.SemiBold) },
+391:                                scope.launch { drawerState.close() }
+392:                            },
+403:                    }
+404:                }
+427:                    }
+428:                }
+429:            }
+430:        }
+433:            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+446:                            },
+450:                    },
+452:                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+454:                        }
+455:                    },
+462:                        }
+463:                    },
+469:            },
+489:                        (slideInVertically(animationSpec = tween(duration, easing = easing)) { height -> height / 8 } +
+494:                    },
+505:                    }
+506:                }
+507:            }
+508:        }
+509:        }
+512:            onLoadingFinished = { viewModel.stopLoading() },
+515:    }
+516:}
+534:    var cityQuery by remember { mutableStateOf("") }
+545:    var showEditProfileDialog by remember { mutableStateOf(false) }
+548:    val totalSubjects = remember(schedules) { schedules.map { it.subjectName }.distinct().size }
+549:    val totalTasks = remember(tasks) { tasks.size }
+550:    val doneTasks = remember(tasks) { tasks.count { it.isDone } }
+553:    val totalWorkout = remember(workoutLogs) { workoutLogs.size }
+554:    val totalCalories = remember(workoutLogs) { workoutLogs.sumOf { it.caloriesBurned } }
+556:    val totalDonghua = remember(donghuaItems) { donghuaItems.size }
+557:    val watchingDonghua = remember(donghuaItems) { donghuaItems.count { it.status == "watching" } }
+558:    val finishedDonghua = remember(donghuaItems) { donghuaItems.count { it.status == "finished" } }
+560:    val totalSavingsAmount = remember(savingGoals) { savingGoals.sumOf { it.currentAmount } }
+561:    val targetSavingsAmount = remember(savingGoals) { savingGoals.sumOf { it.targetAmount } }
+564:    val totalNotes = remember(notes) { notes.size }
+571:                val startParts = s.startTime.split(":").map { it.toInt() }
+572:                val endParts = s.endTime.split(":").map { it.toInt() }
+576:            } catch (e: Exception) { /* ignore */ }
+577:        }
+579:    }
+593:    }
+594:    var currentQuoteIndex by remember { mutableStateOf(0) }
+610:                onEditClick = { showEditProfileDialog = true }
+612:        }
+619:            var tempName by remember { mutableStateOf(profileName) }
+620:            var tempBio by remember { mutableStateOf(profileBio) }
+621:            var tempAvatar by remember { mutableStateOf(avatarIndex) }
+623:            Dialog(onDismissRequest = { showEditProfileDialog = false }) {
+637:                            onValueChange = { tempName = it },
+638:                            label = { Text("Nama Pengguna") },
+645:                            onValueChange = { tempBio = it },
+646:                            label = { Text("Bio / Slogan") },
+670:                                        .clickable { tempAvatar = idx }
+679:                                }
+680:                            }
+681:                        }
+688:                            TextButton(onClick = { showEditProfileDialog = false }) {
+690:                            }
+696:                                },
+700:                            }
+701:                        }
+702:                    }
+703:                }
+704:            }
+705:        }
+717:                    Button(onClick = { viewModel.navigateTo(Screen.Study) }) {
+721:                    }
+722:                    Button(onClick = { viewModel.navigateTo(Screen.Workout) }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)) {
+726:                    }
+727:                    Button(onClick = { viewModel.navigateTo(Screen.Donghua) }, colors = ButtonDefaults.buttonColors(containerColor = SuccessGreen)) {
+731:                    }
+732:                    Button(onClick = { viewModel.navigateTo(Screen.Saving) }, colors = ButtonDefaults.buttonColors(containerColor = WarningAmber)) {
+736:                    }
+737:                }
+738:            }
+739:        }
+760:                            onValueChange = { cityQuery = it },
+761:                            placeholder = { Text("Masukkan kota...") },
+771:                            onClick = { viewModel.searchWeather(cityQuery) },
+777:                            } else {
+779:                            }
+780:                        }
+781:                    }
+793:                                        text = "${info.cityName}, ${info.country}",
+799:                                        onClick = { viewModel.searchWeather(info.cityName) },
+808:                                    }
+809:                                }
+822:                                    },
+826:                            }
+829:                                    text = "${info.temperature}°C",
+835:                                    Text(text = "💧 ${info.humidity}%", fontSize = 11.sp)
+836:                                    Text(text = "💨 ${info.windspeed} km/j", fontSize = 11.sp)
+837:                                }
+838:                            }
+839:                        }
+840:                    }
+841:                }
+842:            }
+843:        }
+867:                    }
+872:                            subtitle = "${totalCalories} kalori",
+885:                    }
+903:                    }
+904:                }
+905:            }
+906:        }
+920:                    }
+921:                }
+922:            }
+923:        }
+944:                                    Text(text = "Target: 8 Gelas / Hari (${waterIntake * 250}ml / 2000ml)", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+945:                                }
+946:                            }
+949:                                text = if (waterIntake >= 8) "Terpenuhi! 🎉" else "${waterIntake}/8 Gelas",
+954:                        }
+958:                            progress = { Math.min(1.0f, waterIntake.toFloat() / 8.0f) },
+970:                                onClick = { viewModel.subtractWaterGlass() },
+976:                            }
+979:                                onClick = { viewModel.addWaterGlass() },
+985:                            }
+986:                        }
+987:                    }
+988:                }
+989:            }
+990:        }
+1008:                            onValueChange = { viewModel.updateScratchpad(it) },
+1009:                            placeholder = { Text("Mulai menulis catatan cepat...") },
+1017:                    }
+1018:                }
+1019:            }
+1020:        }
+1038:                        }
+1040:                            onClick = { viewModel.triggerLocalBackup() },
+1046:                        }
+1047:                    }
+1048:                }
+1049:            }
+1050:        }
+1059:                    },
+1082:                        }
+1090:                    }
+1091:                }
+1092:            }
+1093:        }
+1126:                                            .clickable { viewModel.setThemeAccent(name) }
+1149:                                        }
+1150:                                    }
+1151:                                }
+1152:                            }
+1153:                        }
+1154:                    }
+1155:                }
+1156:            }
+1157:        }
+1177:                    }
+1179:                        onClick = { viewModel.resetAllData() },
+1184:                    }
+1185:                }
+1186:            }
+1187:        }
+1188:    }
+1189:}
+1212:            }
+1217:            }
+1218:        }
+1219:    }
+1220:}
+1233:        }
+1244:    }
+1245:}
+1257:    var showAddSlotDialog by remember { mutableStateOf(false) }
+1258:    var showAddScheduleDialog by remember { mutableStateOf(false) }
+1259:    var showAddNoteDialog by remember { mutableStateOf(false) }
+1262:    var slotStart by remember { mutableStateOf("07:00") }
+1263:    var slotEnd by remember { mutableStateOf("08:00") }
+1265:    var schedDay by remember { mutableStateOf("SENIN") }
+1266:    var schedStart by remember { mutableStateOf("07:00") }
+1267:    var schedEnd by remember { mutableStateOf("08:00") }
+1268:    var schedSubject by remember { mutableStateOf("") }
+1269:    var schedColorHex by remember { mutableStateOf("#4F46E5") }
+1271:    var taskText by remember { mutableStateOf("") }
+1272:    var taskSubject by remember { mutableStateOf("") }
+1273:    var taskDeadline by remember { mutableStateOf("") }
+1274:    var taskFilter by remember { mutableStateOf("all") }
+1275:    var taskSortBy by remember { mutableStateOf("newest") } // newest, deadline, alpha
+1277:    var noteTitle by remember { mutableStateOf("") }
+1278:    var noteContent by remember { mutableStateOf("") }
+1279:    var noteTags by remember { mutableStateOf("") }
+1296:            }
+1297:        }
+1298:    }
+1330:                            }
+1331:                        }
+1345:                        }
+1346:                    }
+1382:                                        } else {
+1384:                                        }
+1385:                                    }
+1394:                            }
+1395:                        }
+1396:                    }
+1403:                            onClick = { viewModel.togglePomodoro() },
+1416:                        }
+1422:                            },
+1427:                        }
+1428:                    }
+1429:                }
+1430:            }
+1431:        }
+1450:                        onValueChange = { taskText = it },
+1451:                        label = { Text("Nama Tugas / PR") },
+1454:                        leadingIcon = { Icon(Icons.Outlined.Edit, null) }
+1461:                            onValueChange = { taskSubject = it },
+1462:                            label = { Text("Mata Pelajaran") },
+1465:                            leadingIcon = { Icon(Icons.Outlined.Book, null) }
+1476:                            },
+1484:                            onValueChange = { },
+1485:                            label = { Text("Deadline (Klik)") },
+1486:                            modifier = Modifier.weight(1f).clickable { datePickerDialog.show() },
+1488:                            leadingIcon = { Icon(Icons.Outlined.Event, null) },
+1499:                    }
+1510:                            }
+1511:                        },
+1518:                    }
+1519:                }
+1520:            }
+1521:        }
+1539:                        }
+1541:                            IconButton(onClick = { showAddSlotDialog = true }) {
+1543:                            }
+1544:                            IconButton(onClick = { showAddScheduleDialog = true }) {
+1546:                            }
+1547:                        }
+1548:                    }
+1560:                    } else {
+1561:                        val days = remember { DAYS_OF_WEEK.take(5) }
+1590:                                }
+1604:                                    }
+1605:                                }
+1606:                            }
+1612:                                timeSlots.sortedBy { it.startTime }
+1613:                            }
+1633:                                        text = "${slot.startTime}\n-\n${slot.endTime}",
+1642:                                        onClick = { viewModel.deleteTimeSlot(slot) },
+1651:                                    }
+1652:                                }
+1658:                                    }
+1671:                                                } catch (e: Exception) {
+1673:                                                }
+1674:                                            }
+1692:                                                        onClick = { viewModel.deleteSchedule(match) },
+1703:                                                    }
+1719:                                                }
+1720:                                            }
+1721:                                        } else {
+1736:                                            }
+1737:                                        }
+1738:                                    }
+1739:                                }
+1740:                            }
+1742:                        }
+1743:                    }
+1744:                }
+1745:            }
+1746:        }
+1761:                    onValueChange = { taskText = it },
+1762:                    label = { Text("Deskripsi Tugas...") },
+1772:                        onValueChange = { taskSubject = it },
+1773:                        label = { Text("Mata Pelajaran") },
+1779:                        onValueChange = { taskDeadline = it },
+1780:                        label = { Text("Deadline (e.g. 2026-06-30)") },
+1784:                }
+1792:                    },
+1799:                }
+1811:                            onClick = { taskFilter = filterVal },
+1812:                            label = { Text(filterVal.uppercase() + " (" + (if (filterVal == "pending") tasks.count { !it.isDone } else if (filterVal == "done") tasks.count { it.isDone } else tasks.size) + ")", fontSize = 11.sp) }
+1814:                    }
+1815:                }
+1827:                            onClick = { taskSortBy = sortVal },
+1828:                            label = { Text(label, fontSize = 10.sp) }
+1830:                    }
+1831:                }
+1836:                        "pending" -> tasks.filter { !it.isDone }
+1837:                        "done" -> tasks.filter { it.isDone }
+1839:                    }
+1841:                        "deadline" -> base.sortedBy { if (it.deadline.isBlank()) "9999-99-99" else it.deadline }
+1842:                        "alpha" -> base.sortedBy { it.text.lowercase() }
+1843:                        else -> base.sortedByDescending { it.createdAt }
+1844:                    }
+1845:                }
+1854:                } else {
+1871:                                        onCheckedChange = { viewModel.toggleTask(task) }
+1883:                                                Text(text = "📚 ${task.subject}", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+1884:                                            }
+1886:                                                Text(text = "📅 ${task.deadline}", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary)
+1887:                                            }
+1888:                                        }
+1889:                                    }
+1890:                                    IconButton(onClick = { viewModel.deleteTask(task) }) {
+1892:                                    }
+1893:                                }
+1894:                            }
+1895:                        }
+1896:                    }
+1897:                }
+1898:            }
+1899:        }
+1915:                    IconButton(onClick = { showAddNoteDialog = true }) {
+1917:                    }
+1918:                }
+1927:                } else {
+1944:                                            IconButton(onClick = { viewModel.deleteNote(note) }, modifier = Modifier.size(24.dp)) {
+1946:                                            }
+1947:                                        }
+1964:                                                            Text(text = "#${tag.trim()}", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+1965:                                                        }
+1966:                                                    }
+1967:                                                }
+1968:                                            }
+1969:                                        }
+1970:                                    }
+1971:                                }
+1972:                            }
+1973:                        }
+1974:                    }
+1975:                }
+1976:            }
+1977:        }
+1978:    }
+1982:        Dialog(onDismissRequest = { showAddSlotDialog = false }) {
+1992:                    OutlinedTextField(value = slotStart, onValueChange = { slotStart = it }, label = { Text("Jam Mulai (HH:MM)") }, modifier = Modifier.fillMaxWidth())
+1993:                    OutlinedTextField(value = slotEnd, onValueChange = { slotEnd = it }, label = { Text("Jam Selesai (HH:MM)") }, modifier = Modifier.fillMaxWidth())
+1998:                        TextButton(onClick = { showAddSlotDialog = false }) { Text("Batal") }
+2002:                        }) { Text("Simpan") }
+2003:                    }
+2004:                }
+2005:            }
+2006:        }
+2007:    }
+2011:        Dialog(onDismissRequest = { showAddScheduleDialog = false }) {
+2021:                    OutlinedTextField(value = schedSubject, onValueChange = { schedSubject = it }, label = { Text("Nama Pelajaran") }, modifier = Modifier.fillMaxWidth())
+2029:                                onClick = { schedDay = day },
+2030:                                label = { Text(day, fontSize = 10.sp) }
+2032:                        }
+2033:                    }
+2039:                        OutlinedTextField(value = schedStart, onValueChange = { schedStart = it }, label = { Text("Mulai") }, modifier = Modifier.weight(1f))
+2040:                        OutlinedTextField(value = schedEnd, onValueChange = { schedEnd = it }, label = { Text("Selesai") }, modifier = Modifier.weight(1f))
+2041:                    }
+2053:                                    .clickable { schedColorHex = col }
+2056:                        }
+2057:                    }
+2063:                        TextButton(onClick = { showAddScheduleDialog = false }) { Text("Batal") }
+2068:                        }) { Text("Simpan") }
+2069:                    }
+2070:                }
+2071:            }
+2072:        }
+2073:    }
+2077:        Dialog(onDismissRequest = { showAddNoteDialog = false }) {
+2087:                    OutlinedTextField(value = noteTitle, onValueChange = { noteTitle = it }, label = { Text("Judul Catatan") }, modifier = Modifier.fillMaxWidth())
+2088:                    OutlinedTextField(value = noteContent, onValueChange = { noteContent = it }, label = { Text("Isi Catatan") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+2089:                    OutlinedTextField(value = noteTags, onValueChange = { noteTags = it }, label = { Text("Tag (pisahkan dengan koma)") }, modifier = Modifier.fillMaxWidth())
+2094:                        TextButton(onClick = { showAddNoteDialog = false }) { Text("Batal") }
+2101:                        }) { Text("Simpan") }
+2102:                    }
+2103:                }
+2104:            }
+2105:        }
+2106:    }
+2107:}
+2108:}
+2126:            } else {
+2128:            }
+2130:    }
+2136:    }
+2152:                    } else if (event.sensor.type == Sensor.TYPE_STEP_COUNTER) {
+2156:                        } else {
+2161:                            }
+2162:                        }
+2163:                    }
+2164:                }
+2165:                override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+2166:            }
+2170:            } else if (stepCounter != null) {
+2172:            }
+2176:            }
+2177:        } else {
+2178:            onDispose {}
+2179:        }
+2180:    }
+2182:    var showAddWorkoutDialog by remember { mutableStateOf(false) }
+2184:    var logName by remember { mutableStateOf("") }
+2185:    var logSportType by remember { mutableStateOf("Lari (8 km/jam)") }
+2186:    var logDuration by remember { mutableStateOf("") }
+2187:    var logWeight by remember { mutableStateOf("60") }
+2188:    var logExerciseName by remember { mutableStateOf("") }
+2189:    var logSets by remember { mutableStateOf("") }
+2190:    var logReps by remember { mutableStateOf("") }
+2195:    val totalSessions = remember(workoutLogs) { workoutLogs.size }
+2196:    val totalDuration = remember(workoutLogs) { workoutLogs.sumOf { it.durationMinutes } }
+2197:    val totalCalories = remember(workoutLogs) { workoutLogs.sumOf { it.caloriesBurned } }
+2233:            }
+2234:        }
+2257:                            }
+2258:                        }
+2280:                            }
+2281:                        }
+2282:                    }
+2300:                                progress = { 1f },
+2306:                                progress = { progress },
+2322:                            }
+2323:                        }
+2338:                        }
+2339:                    }
+2348:                                onClick = { permissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION) },
+2355:                            }
+2356:                        } else {
+2362:                                var showEditGoalDialog by remember { mutableStateOf(false) }
+2364:                                    onClick = { showEditGoalDialog = true },
+2370:                                }
+2373:                                    var tempGoalInput by remember { mutableStateOf(todayStepGoal.toString()) }
+2374:                                    Dialog(onDismissRequest = { showEditGoalDialog = false }) {
+2386:                                                    onValueChange = { tempGoalInput = it },
+2387:                                                    label = { Text("Target Langkah") },
+2395:                                                    TextButton(onClick = { showEditGoalDialog = false }) { Text("Batal") }
+2401:                                                        }
+2402:                                                    }) { Text("Simpan") }
+2403:                                                }
+2404:                                            }
+2405:                                        }
+2406:                                    }
+2407:                                }
+2410:                                var showManualLogDialog by remember { mutableStateOf(false) }
+2412:                                    onClick = { showManualLogDialog = true },
+2418:                                }
+2421:                                    var manualStepsInput by remember { mutableStateOf("") }
+2422:                                    Dialog(onDismissRequest = { showManualLogDialog = false }) {
+2434:                                                    onValueChange = { manualStepsInput = it },
+2435:                                                    label = { Text("Jumlah Langkah (cth: 5000)") },
+2443:                                                    TextButton(onClick = { showManualLogDialog = false }) { Text("Batal") }
+2449:                                                        }
+2450:                                                    }) { Text("Tambah") }
+2451:                                                }
+2452:                                            }
+2453:                                        }
+2454:                                    }
+2455:                                }
+2456:                            }
+2471:                                    onClick = { viewModel.incrementActiveSteps(100) },
+2476:                                }
+2478:                                    onClick = { viewModel.incrementActiveSteps(500) },
+2483:                                }
+2485:                                    onClick = { viewModel.incrementActiveSteps(1000) },
+2490:                                }
+2491:                            }
+2492:                        }
+2493:                    }
+2504:                                }
+2516:                                        Text(text = "👣 ${log.steps} / ${log.target} langkah", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+2518:                                    }
+2525:                                        }
+2527:                                            onClick = { viewModel.deleteStepLog(log) },
+2531:                                        }
+2532:                                    }
+2533:                                }
+2534:                            }
+2535:                        }
+2536:                    }
+2537:                }
+2538:            }
+2539:        }
+2554:                        Button(onClick = { showAddWorkoutDialog = true }, shape = RoundedCornerShape(12.dp)) {
+2558:                        }
+2559:                    }
+2570:                    } else {
+2577:                                    }
+2593:                                                Text(text = "Tipe: ${log.sportType}", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+2595:                                                    Text(text = "🏋️ ${log.exerciseName} - ${log.sets} Set x ${log.reps} Reps", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+2596:                                                }
+2599:                                                    Text(text = "⏱️ ${log.durationMinutes} mnt", fontSize = 11.sp)
+2600:                                                    Text(text = "🔥 ${log.caloriesBurned} kal", fontSize = 11.sp, color = SuccessGreen, fontWeight = FontWeight.Bold)
+2601:                                                }
+2603:                                            }
+2604:                                            IconButton(onClick = { viewModel.deleteWorkoutLog(log) }) {
+2606:                                            }
+2607:                                        }
+2608:                                    }
+2609:                                }
+2610:                            }
+2611:                        }
+2612:                    }
+2613:                }
+2614:            }
+2615:        }
+2645:                                }.sumOf { it.caloriesBurned }
+2649:                            }
+2651:                        }
+2663:                            val maxVal = Math.max(1, last7DaysData.maxOf { it.second })
+2690:                                }
+2691:                            }
+2692:                        }
+2702:                                    Text(text = "${pair.second}", fontSize = 9.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.ExtraBold)
+2703:                                }
+2704:                            }
+2705:                        }
+2706:                    }
+2707:                }
+2708:            }
+2709:        }
+2710:    }
+2714:        Dialog(onDismissRequest = { showAddWorkoutDialog = false }) {
+2729:                        onValueChange = { logName = it },
+2730:                        label = { Text("Nama Olahraga (cth: Lari Sore)") },
+2744:                                onClick = { logSportType = sport },
+2745:                                label = { Text(sport, fontSize = 10.sp) }
+2747:                        }
+2748:                    }
+2756:                            onValueChange = { logDuration = it },
+2757:                            label = { Text("Durasi (menit)") },
+2763:                            onValueChange = { logWeight = it },
+2764:                            label = { Text("Beban (kg)") },
+2768:                    }
+2781:                                    onValueChange = { logExerciseName = it },
+2782:                                    label = { Text("Gerakan (cth: Bench Press)") },
+2788:                                        onValueChange = { logSets = it },
+2789:                                        label = { Text("Set") },
+2795:                                        onValueChange = { logReps = it },
+2796:                                        label = { Text("Repetisi") },
+2800:                                }
+2801:                            }
+2802:                        }
+2803:                    }
+2809:                        TextButton(onClick = { showAddWorkoutDialog = false }) { Text("Batal") }
+2834:                        }) { Text("Log Sekarang") }
+2835:                    }
+2836:                }
+2837:            }
+2838:        }
+2839:    }
+2840:}
+2849:    var showAddGoalDialog by remember { mutableStateOf(false) }
+2850:    var editTargetGoal by remember { mutableStateOf<SavingGoal?>(null) }
+2852:    var goalName by remember { mutableStateOf("") }
+2853:    var goalTarget by remember { mutableStateOf("") }
+2854:    var goalCurrent by remember { mutableStateOf("") }
+2879:                        Button(onClick = { showAddGoalDialog = true }, shape = RoundedCornerShape(12.dp)) {
+2883:                        }
+2884:                    }
+2895:                    } else {
+2924:                                                    }, modifier = Modifier.size(32.dp)) {
+2926:                                                    }
+2927:                                                    IconButton(onClick = { viewModel.deleteSavingGoal(goal) }, modifier = Modifier.size(32.dp)) {
+2929:                                                    }
+2930:                                                }
+2931:                                            }
+2948:                                                    text = "${formatRupiah(goal.currentAmount)} / ${formatRupiah(goal.targetAmount)}",
+2959:                                            }
+2960:                                        }
+2961:                                    }
+2962:                                }
+2963:                            }
+2964:                        }
+2965:                    }
+2966:                }
+2967:            }
+2968:        }
+2969:    }
+2973:        Dialog(onDismissRequest = { showAddGoalDialog = false }) {
+2983:                    }
+2986:                        onValueChange = { goalName = it },
+2987:                        label = { Text("Nama Target") },
+2988:                        leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+2999:                        onValueChange = { if (it.isEmpty() || it.replace(".", "").all { char -> char.isDigit() }) goalTarget = formatAsCurrency(it) },
+3000:                        label = { Text("Nominal Target (Rp)") },
+3001:                        leadingIcon = { Icon(Icons.Outlined.AttachMoney, contentDescription = null) },
+3013:                        onValueChange = { if (it.isEmpty() || it.replace(".", "").all { char -> char.isDigit() }) goalCurrent = formatAsCurrency(it) },
+3014:                        label = { Text("Terkumpul (Rp)") },
+3015:                        leadingIcon = { Icon(Icons.Outlined.AccountBalanceWallet, contentDescription = null) },
+3029:                        TextButton(onClick = { showAddGoalDialog = false }) { Text("Batal") }
+3038:                        }) { Text("Simpan") }
+3039:                    }
+3040:                }
+3041:            }
+3042:        }
+3043:    }
+3047:        Dialog(onDismissRequest = { editTargetGoal = null }) {
+3057:                        onValueChange = { goalName = it },
+3058:                        label = { Text("Nama Target") },
+3069:                        onValueChange = { if (it.isEmpty() || it.replace(".", "").all { char -> char.isDigit() }) goalTarget = formatAsCurrency(it) },
+3070:                        label = { Text("Nominal Target (Rp)") },
+3082:                        onValueChange = { if (it.isEmpty() || it.replace(".", "").all { char -> char.isDigit() }) goalCurrent = formatAsCurrency(it) },
+3083:                        label = { Text("Terkumpul (Rp)") },
+3097:                        TextButton(onClick = { editTargetGoal = null }) { Text("Batal") }
+3103:                            }
+3108:                        }) { Text("Simpan") }
+3109:                    }
+3110:                }
+3111:            }
+3112:        }
+3113:    }
+3114:}
+3123:    var showAddDonghuaDialog by remember { mutableStateOf(false) }
+3124:    var editDonghuaItem by remember { mutableStateOf<DonghuaItem?>(null) }
+3126:    var donghuaTitle by remember { mutableStateOf("") }
+3127:    var donghuaTotal by remember { mutableStateOf("12") }
+3128:    var donghuaCurrent by remember { mutableStateOf("0") }
+3129:    var donghuaStatus by remember { mutableStateOf("watching") }
+3130:    var donghuaRating by remember { mutableStateOf(5) }
+3131:    var donghuaFav by remember { mutableStateOf(false) }
+3133:    var filterValue by remember { mutableStateOf("all") }
+3134:    var searchQuery by remember { mutableStateOf("") }
+3135:    var sortBy by remember { mutableStateOf("title") }
+3142:        val finished = donghuaItems.count { it.status == "finished" }
+3144:    }
+3146:    val statsTotal = remember(donghuaItems) { donghuaItems.size }
+3147:    val statsWatching = remember(donghuaItems) { donghuaItems.count { it.status == "watching" } }
+3148:    val statsFinished = remember(donghuaItems) { donghuaItems.count { it.status == "finished" } }
+3149:    val statsWaiting = remember(donghuaItems) { donghuaItems.count { it.status == "waiting" } }
+3180:                    }
+3181:                }
+3182:            }
+3183:        }
+3202:                    }
+3206:                    }
+3210:                    }
+3214:                    }
+3215:                }
+3216:            }
+3217:        }
+3228:                    onValueChange = { searchQuery = it },
+3229:                    placeholder = { Text("Cari donghua...") },
+3233:                    leadingIcon = { Icon(imageVector = Icons.Outlined.Search, contentDescription = "Search") }
+3236:                    onClick = { showAddDonghuaDialog = true },
+3242:                }
+3243:            }
+3244:        }
+3258:                            onClick = { filterValue = filterVal },
+3259:                            label = { Text(label) }
+3261:                    }
+3262:                }
+3274:                                onClick = { sortBy = sortVal },
+3275:                                label = { Text(label, fontSize = 11.sp) }
+3277:                        }
+3278:                    }
+3279:                }
+3280:            }
+3281:        }
+3286:            if (searchQuery.isNotBlank()) res = res.filter { it.title.contains(searchQuery, true) }
+3288:                if (filterValue == "favorites") res = res.filter { it.isFavorite }
+3289:                else res = res.filter { it.status == filterValue }
+3290:            }
+3292:                "title" -> res.sortedBy { it.title }
+3293:                "rating" -> res.sortedByDescending { it.rating }
+3294:                else -> res.sortedByDescending { it.id }
+3295:            }
+3296:        }
+3322:                                            }
+3331:                                        },
+3336:                                        },
+3340:                                }
+3341:                            }
+3344:                                IconButton(onClick = { viewModel.toggleDonghuaFavorite(item) }) {
+3350:                                }
+3359:                                }) {
+3361:                                }
+3362:                                IconButton(onClick = { viewModel.deleteDonghua(item) }) {
+3364:                                }
+3365:                            }
+3366:                        }
+3376:                                text = "Eps ${item.currentEpisode} / ${item.totalEpisodes}",
+3381:                                text = "${Math.round(pct * 100)}%",
+3386:                        }
+3406:                            }
+3407:                        }
+3411:                            onClick = { viewModel.incrementDonghua(item) },
+3419:                        }
+3420:                    }
+3421:                }
+3422:            }
+3423:        }
+3424:    }
+3428:        Dialog(onDismissRequest = { showAddDonghuaDialog = false }) {
+3437:                    OutlinedTextField(value = donghuaTitle, onValueChange = { donghuaTitle = it }, label = { Text("Judul Donghua") }, modifier = Modifier.fillMaxWidth())
+3440:                        OutlinedTextField(value = donghuaTotal, onValueChange = { donghuaTotal = it }, label = { Text("Total Eps") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+3441:                        OutlinedTextField(value = donghuaCurrent, onValueChange = { donghuaCurrent = it }, label = { Text("Eps Sekarang") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+3442:                    }
+3449:                                onClick = { donghuaStatus = statVal },
+3450:                                label = { Text(label) }
+3452:                        }
+3453:                    }
+3458:                            IconButton(onClick = { donghuaRating = i }, modifier = Modifier.size(32.dp)) {
+3464:                            }
+3465:                        }
+3466:                    }
+3472:                        Checkbox(checked = donghuaFav, onCheckedChange = { donghuaFav = it })
+3474:                    }
+3480:                        TextButton(onClick = { showAddDonghuaDialog = false }) { Text("Batal") }
+3492:                        }) { Text("Simpan") }
+3493:                    }
+3494:                }
+3495:            }
+3496:        }
+3497:    }
+3501:        Dialog(onDismissRequest = { editDonghuaItem = null }) {
+3510:                    OutlinedTextField(value = donghuaTitle, onValueChange = { donghuaTitle = it }, label = { Text("Judul Donghua") }, modifier = Modifier.fillMaxWidth())
+3513:                        OutlinedTextField(value = donghuaTotal, onValueChange = { donghuaTotal = it }, label = { Text("Total Eps") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+3514:                        OutlinedTextField(value = donghuaCurrent, onValueChange = { donghuaCurrent = it }, label = { Text("Eps Sekarang") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.weight(1f))
+3515:                    }
+3522:                                onClick = { donghuaStatus = statVal },
+3523:                                label = { Text(label) }
+3525:                        }
+3526:                    }
+3531:                            IconButton(onClick = { donghuaRating = i }, modifier = Modifier.size(32.dp)) {
+3537:                            }
+3538:                        }
+3539:                    }
+3545:                        Checkbox(checked = donghuaFav, onCheckedChange = { donghuaFav = it })
+3547:                    }
+3553:                        TextButton(onClick = { editDonghuaItem = null }) { Text("Batal") }
+3559:                            }
+3567:                        }) { Text("Simpan") }
+3568:                    }
+3569:                }
+3570:            }
+3571:        }
+3572:    }
+3573:}
+3583:    var showAddTxDialog by remember { mutableStateOf(false) }
+3584:    var showEditLimitDialog by remember { mutableStateOf(false) }
+3586:    var txDesc by remember { mutableStateOf("") }
+3587:    var txAmount by remember { mutableStateOf("") }
+3588:    var txType by remember { mutableStateOf("income") }
+3590:    var txSearchQuery by remember { mutableStateOf("") }
+3591:    var txFilterType by remember { mutableStateOf("all") } // all, income, expense
+3596:    val incomeSum = remember(transactions) { transactions.filter { it.type == "income" }.sumOf { it.amount } }
+3597:    val expenseSum = remember(transactions) { transactions.filter { it.type == "expense" }.sumOf { it.amount } }
+3602:    var isDanaIntegrated by remember { mutableStateOf(false) }
+3611:            } else {
+3613:            }
+3615:    }
+3621:    }
+3628:        }
+3629:    }
+3669:                        }
+3673:                        }
+3674:                    }
+3675:                }
+3676:            }
+3677:        }
+3696:                                    text = "Pengeluaran: ${formatRupiah(expenseSum)} / ${formatRupiah(budgetLimit)}",
+3700:                            }
+3701:                        }
+3704:                            onClick = { showEditLimitDialog = true },
+3708:                        }
+3709:                    }
+3717:                    }
+3720:                        progress = { Math.min(1.0f, pct) },
+3747:                            }
+3748:                        }
+3749:                    } else if (pct >= 0.8f) {
+3768:                            }
+3769:                        }
+3770:                    }
+3771:                }
+3772:            }
+3773:        }
+3779:            } else {
+3781:            }
+3814:                                }
+3815:                            }
+3824:                            }
+3825:                        }
+3839:                        }
+3840:                    }
+3845:                        } else {
+3847:                        },
+3859:                                } catch (e: Exception) {
+3862:                                }
+3863:                            },
+3871:                        }
+3872:                    }
+3873:                }
+3874:            }
+3875:        }
+3892:                        Button(onClick = { showAddTxDialog = true }, shape = RoundedCornerShape(12.dp)) {
+3896:                        }
+3897:                    }
+3904:                        onValueChange = { txSearchQuery = it },
+3905:                        placeholder = { Text("Cari transaksi...") },
+3906:                        leadingIcon = { Icon(imageVector = Icons.Outlined.Search, contentDescription = "Cari") },
+3919:                                onClick = { txFilterType = typeVal },
+3920:                                label = { Text(label + " (" + (if (typeVal == "income") transactions.count { it.type == "income" } else if (typeVal == "expense") transactions.count { it.type == "expense" } else transactions.size) + ")", fontSize = 11.sp) }
+3922:                        }
+3923:                    }
+3927:                        if (txSearchQuery.isNotBlank()) res = res.filter { it.description.contains(txSearchQuery, true) }
+3928:                        if (txFilterType != "all") res = res.filter { it.type == txFilterType }
+3929:                        res.sortedByDescending { it.date }
+3930:                    }
+3939:                    } else {
+3949:                                    }
+3966:                                            }
+3970:                                                    text = "${if (tx.type == "income") "+" else "-"} ${formatRupiah(tx.amount)}",
+3975:                                                IconButton(onClick = { viewModel.deleteTransaction(tx) }) {
+3977:                                                }
+3978:                                            }
+3979:                                        }
+3980:                                    }
+3981:                                }
+3982:                            }
+3983:                        }
+3984:                    }
+3985:                }
+3986:            }
+3987:        }
+3988:    }
+3992:        Dialog(onDismissRequest = { showAddTxDialog = false }) {
+4002:                    }
+4005:                        onValueChange = { txDesc = it },
+4006:                        label = { Text("Keterangan") },
+4007:                        leadingIcon = { Icon(Icons.Outlined.ListAlt, contentDescription = null) },
+4018:                        onValueChange = { if (it.isEmpty() || it.replace(".", "").all { char -> char.isDigit() }) txAmount = formatAsCurrency(it) },
+4019:                        label = { Text("Jumlah Nominal (Rp)") },
+4020:                        leadingIcon = { Icon(Icons.Outlined.AttachMoney, contentDescription = null) },
+4035:                            onClick = { txType = "income" },
+4036:                            label = { Text("Pemasukan (Masuk)", color = if (txType == "income") SuccessGreen else MaterialTheme.colorScheme.onSurface) }
+4040:                            onClick = { txType = "expense" },
+4041:                            label = { Text("Pengeluaran (Keluar)", color = if (txType == "expense") DangerRed else MaterialTheme.colorScheme.onSurface) }
+4043:                    }
+4049:                        TextButton(onClick = { showAddTxDialog = false }) { Text("Batal") }
+4057:                        }) { Text("Simpan") }
+4058:                    }
+4059:                }
+4060:            }
+4061:        }
+4062:    }
+4063:}
+4100:                            val done = tasks.count { it.isDone }
+4110:                            } else {
+4136:                                    }
+4144:                                        }
+4148:                                        }
+4149:                                    }
+4150:                                }
+4151:                            }
+4152:                        }
+4153:                    }
+4154:                }
+4174:                                }
+4176:                            }
+4185:                            } else {
+4195:                                                    Text(text = "$count sesi (${Math.round(pct * 100)}%)", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+4196:                                                }
+4207:                                            }
+4208:                                        }
+4209:                                    }
+4210:                                }
+4211:                            }
+4212:                }
+4213:            }
+4214:        }
+4250:                                    }.sumOf { it.caloriesBurned }
+4254:                                }
+4256:                            }
+4267:                                    val maxVal = Math.max(1, calPerDay.maxOf { it.second })
+4284:                                    }
+4285:                                }
+4295:                                            Text(text = "${pair.second} kal", fontSize = 9.sp, color = SuccessGreen, fontWeight = FontWeight.Bold)
+4296:                                        }
+4297:                                    }
+4298:                                }
+4299:                            }
+4300:                }
+4301:            }
+4302:        }
+4320:                    val income = transactions.filter { it.type == "income" }.sumOf { it.amount }
+4321:                    val expense = transactions.filter { it.type == "expense" }.sumOf { it.amount }
+4331:                    } else {
+4355:                            }
+4367:                                }
+4375:                                }
+4376:                            }
+4377:                        }
+4378:                    }
+4379:                }
+4380:            }
+4381:        }
+4382:    }
+4383:}
+4392:    var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+4398:        }
+4399:    }
+4403:        Calendar.getInstance(tz).apply { timeInMillis = currentTime }
+4404:    }
+4411:    }
+4412:    val timeFmt = SimpleDateFormat("HH:mm:ss", Locale("id", "ID")).apply { timeZone = tz }
+4413:    val dateFmt = SimpleDateFormat("EEEE, d MMMM yyyy", Locale("id", "ID")).apply { timeZone = tz }
+4445:                        }
+4447:                    }
+4448:                }
+4471:                        }
+4472:                    }
+4495:                    }
+4496:                }
+4497:            }
+4498:        }
+4499:    }
+4500:}
