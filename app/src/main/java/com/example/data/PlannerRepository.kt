@@ -50,4 +50,10 @@ class PlannerRepository(private val plannerDao: PlannerDao) {
     suspend fun insertTransaction(transaction: BudgetTransaction) = plannerDao.insertTransaction(transaction)
     suspend fun deleteTransaction(transaction: BudgetTransaction) = plannerDao.deleteTransaction(transaction)
     suspend fun clearTransactions() = plannerDao.clearAllTransactions()
+
+    // Bini Gweh (Waifu) Items
+    val allBiniGwehItems: Flow<List<BiniGwehItem>> = plannerDao.getAllBiniGwehItems()
+    suspend fun insertBiniGweh(item: BiniGwehItem) = plannerDao.insertBiniGweh(item)
+    suspend fun deleteBiniGweh(item: BiniGwehItem) = plannerDao.deleteBiniGweh(item)
+    suspend fun clearBiniGweh() = plannerDao.clearAllBiniGweh()
 }

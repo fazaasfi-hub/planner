@@ -400,6 +400,7 @@ fun PlannerApp(viewModel: PlannerViewModel, isDarkTheme: Boolean, onThemeToggle:
                     Triple(Screen.Workout, "Olahraga", Icons.Outlined.FitnessCenter),
                     Triple(Screen.Saving, "Nabung", Icons.Outlined.Savings),
                     Triple(Screen.Donghua, "Donghua Tracker", Icons.Outlined.Movie),
+                    Triple(Screen.Mbg, "MBG (My Bini Gweh) ❤️", Icons.Default.FavoriteBorder),
                     Triple(Screen.Chart, "Grafik Statistik", Icons.Outlined.BarChart),
                     Triple(Screen.Budget, "Budget Tracker", Icons.Outlined.AccountBalanceWallet)
                 )
@@ -465,6 +466,7 @@ fun PlannerApp(viewModel: PlannerViewModel, isDarkTheme: Boolean, onThemeToggle:
                                 Screen.Workout -> "Olahraga"
                                 Screen.Saving -> "Nabung"
                                 Screen.Donghua -> "Donghua Tracker"
+                                Screen.Mbg -> "MBG (My Bini Gweh) ❤️"
                                 Screen.Chart -> "Grafik"
                                 Screen.Budget -> "Budget Tracker"
                             },
@@ -524,6 +526,7 @@ fun PlannerApp(viewModel: PlannerViewModel, isDarkTheme: Boolean, onThemeToggle:
                         Screen.Workout -> WorkoutScreen(viewModel)
                         Screen.Saving -> SavingScreen(viewModel)
                         Screen.Donghua -> DonghuaScreen(viewModel)
+                        Screen.Mbg -> MbgScreen(viewModel)
                         Screen.Chart -> ChartScreen(viewModel)
                         Screen.Budget -> BudgetScreen(viewModel)
                     }
@@ -566,6 +569,7 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
     val scratchpad by viewModel.scratchpad.collectAsStateWithLifecycle()
     val themeAccent by viewModel.themeAccent.collectAsStateWithLifecycle()
     val selectedCardId by viewModel.selectedCardId.collectAsStateWithLifecycle()
+    val biniGwehItems by viewModel.biniGwehItems.collectAsStateWithLifecycle()
 
     var showEditProfileDialog by remember { mutableStateOf(false) }
 
@@ -585,6 +589,7 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
     val totalSavingsAmount = remember(savingGoals) { savingGoals.sumOf { it.currentAmount } }
     val targetSavingsAmount = remember(savingGoals) { savingGoals.sumOf { it.targetAmount } }
     val savingsPct = if (targetSavingsAmount > 0) (totalSavingsAmount * 100) / targetSavingsAmount else 0
+    val totalBini = remember(biniGwehItems) { biniGwehItems.size }
 
     // Calculate total study hours (difference in minutes)
     val studyHours = remember(schedules) {
@@ -727,6 +732,110 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
             }
         }
 
+        // PROMINENT HERO BANNER FOR MY BINI GWEH (MBG)
+        StaggeredEntrance(index = 1) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { viewModel.navigateTo(Screen.Mbg) },
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                border = BorderStroke(
+                    width = 2.dp,
+                    brush = Brush.linearGradient(
+                        colors = listOf(Color(0xFFFF4081), Color(0xFFE91E63))
+                    )
+                )
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    Color(0xFFFF4081).copy(alpha = 0.15f),
+                                    Color(0xFFE91E63).copy(alpha = 0.25f)
+                                )
+                            )
+                        )
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFFFF4081).copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("💖", fontSize = 28.sp)
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "My Bini Gweh (MBG)",
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 18.sp,
+                                    color = Color(0xFFFF4081)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(Color(0xFFFF4081))
+                                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "NEW",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 9.sp
+                                    )
+                                }
+                            }
+                            Text(
+                                text = "Fitur pelacak waifu/bini paling update! Cari karakter donghua/anime favoritmu & simpan sebagai bini kesayangan.",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(Color(0xFFFF4081).copy(alpha = 0.1f))
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "💕 $totalBini Bini Terdaftar",
+                                        color = Color(0xFFFF4081),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                                Text(
+                                    text = "Klik untuk Buka Fitur ➜",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFFE91E63)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // QUICK ACTIONS
         StaggeredEntrance(index = 1) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -756,6 +865,11 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
                         Icon(imageVector = Icons.Outlined.Savings, contentDescription = "Nabung")
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Tabungan")
+                    }
+                    Button(onClick = { viewModel.navigateTo(Screen.Mbg) }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF4081))) {
+                        Icon(imageVector = Icons.Default.FavoriteBorder, contentDescription = "MBG")
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Bini Gweh ❤️")
                     }
                 }
             }
@@ -944,6 +1058,32 @@ fun DashboardScreen(viewModel: PlannerViewModel) {
                             icon = Icons.Outlined.Timer,
                             modifier = Modifier.weight(1f),
                             badgeBg = MaterialTheme.colorScheme.tertiary
+                        )
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        StatCardPremium(
+                            id = "stat_mbg",
+                            selectedCardId = selectedCardId,
+                            onCardSelected = { viewModel.selectCard(it) },
+                            title = "My Bini Gweh",
+                            value = "$totalBini Waifu",
+                            subtitle = "Koleksi bini tersayang",
+                            icon = Icons.Default.FavoriteBorder,
+                            modifier = Modifier.weight(1f),
+                            badgeBg = Color(0xFFFF4081),
+                            onClick = { viewModel.navigateTo(Screen.Mbg) }
+                        )
+                        StatCardPremium(
+                            id = "stat_happiness",
+                            selectedCardId = selectedCardId,
+                            onCardSelected = { viewModel.selectCard(it) },
+                            title = "Kebahagiaan",
+                            value = "${if (totalBini > 0) 100 + totalBini * 10 else 100}%",
+                            subtitle = "Mood booster hari ini",
+                            icon = Icons.Default.FavoriteBorder,
+                            modifier = Modifier.weight(1f),
+                            badgeBg = Color(0xFFFF9800),
+                            onClick = { viewModel.navigateTo(Screen.Mbg) }
                         )
                     }
                 }
@@ -1266,13 +1406,14 @@ fun StatCardPremium(
     subtitle: String, 
     icon: ImageVector, 
     modifier: Modifier = Modifier, 
-    badgeBg: Color
+    badgeBg: Color,
+    onClick: (() -> Unit)? = null
 ) {
     ClickableGlassyCard(
         id = id,
         selectedCardId = selectedCardId,
         onCardSelected = onCardSelected,
-        onClick = { /* Handle card click */ },
+        onClick = { onClick?.invoke() },
         modifier = modifier,
         shape = RoundedCornerShape(16.dp)
     ) {
@@ -3155,6 +3296,7 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
     var filterValue by remember { mutableStateOf("all") }
     var searchQuery by remember { mutableStateOf("") }
     var sortBy by remember { mutableStateOf("title") }
+    var activeSubTab by remember { mutableStateOf("tracker") }
 
     val scrollState = rememberScrollState()
 
@@ -3177,7 +3319,42 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // POINTS BAR
+        // Tab Selector
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                listOf("tracker" to "Daftar Donghua", "mbg" to "MBG (My Bini Gweh) ❤️").forEach { (tabId, label) ->
+                    val isSelected = activeSubTab == tabId
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
+                            .clickable { activeSubTab = tabId }
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = label,
+                            color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        if (activeSubTab == "tracker") {
+            // POINTS BAR
         StaggeredEntrance(index = 0) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -3491,6 +3668,9 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
                 }
             }
         }
+        } else {
+            MbgSection(viewModel = viewModel)
+        }
     }
 
     // DIALOG: ADD DONGHUA
@@ -3707,6 +3887,488 @@ fun DonghuaScreen(viewModel: PlannerViewModel) {
                             donghuaFav = false
                             editDonghuaItem = null
                         }) { Text("Simpan") }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MbgScreen(viewModel: PlannerViewModel) {
+    val scrollState = rememberScrollState()
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        MbgSection(viewModel = viewModel)
+    }
+}
+
+@Composable
+fun MbgSection(viewModel: PlannerViewModel) {
+    val biniGwehItems by viewModel.biniGwehItems.collectAsStateWithLifecycle()
+    val searchResult by viewModel.searchCharacterResult.collectAsStateWithLifecycle()
+    val searchLoading by viewModel.searchLoading.collectAsStateWithLifecycle()
+    val searchError by viewModel.searchError.collectAsStateWithLifecycle()
+
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedItemForDetail by remember { mutableStateOf<BiniGwehItem?>(null) }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Hero / Introduction Banner
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)
+            )
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "💖",
+                    fontSize = 32.sp
+                )
+                Column {
+                    Text(
+                        text = "MBG - My Bini Gweh",
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                    Text(
+                        text = "Cari karakter cewek donghua atau anime favoritmu, dapatkan foto resminya, dan simpan sebagai bini/waifu kesayanganmu secara instan!",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
+                    )
+                }
+            }
+        }
+
+        // Search Section
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Cari Bini Baru",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("Ketik nama karakter cewek...") },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        leadingIcon = { Icon(imageVector = Icons.Default.FavoriteBorder, contentDescription = null, tint = Color.Red) }
+                    )
+
+                    Button(
+                        onClick = { viewModel.searchCharacter(searchQuery) },
+                        enabled = !searchLoading,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE91E63)) // Pink
+                    ) {
+                        if (searchLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White)
+                        } else {
+                            Icon(imageVector = Icons.Default.Search, contentDescription = "Cari")
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Cari")
+                        }
+                    }
+                }
+
+                // Error message
+                searchError?.let { err ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                    ) {
+                        Text(
+                            text = err,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(12.dp),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+
+                // Search result preview
+                searchResult?.let { res ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                // Image Box
+                                Box(
+                                    modifier = Modifier
+                                        .size(100.dp, 130.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                ) {
+                                    SubcomposeAsyncImage(
+                                        model = res.imageUrl,
+                                        contentDescription = res.name,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop,
+                                        loading = {
+                                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                                            }
+                                        }
+                                    )
+                                }
+
+                                // Info Details
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = res.name,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 16.sp,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                    if (res.nativeName.isNotEmpty()) {
+                                        Text(
+                                            text = res.nativeName,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                                        )
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f))
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = res.sourceName,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.secondary
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = if (res.description.length > 80) res.description.take(80) + "..." else res.description,
+                                        fontSize = 11.sp,
+                                        lineHeight = 14.sp,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f)
+                                    )
+                                }
+                            }
+
+                            // Add to MBG Button
+                            Button(
+                                onClick = {
+                                    viewModel.addBiniGweh(
+                                        name = res.name,
+                                        description = res.description,
+                                        imageUrl = res.imageUrl,
+                                        sourceName = res.sourceName
+                                    )
+                                    viewModel.clearSearchResult()
+                                    searchQuery = ""
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(8.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE91E63))
+                            ) {
+                                Icon(imageVector = Icons.Default.Favorite, contentDescription = null)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Jadikan Bini Gweh! 💕", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Collection Section
+        Text(
+            text = "Daftar Bini Gweh (${biniGwehItems.size})",
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 16.sp,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+
+        if (biniGwehItems.isEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("💔", fontSize = 48.sp)
+                    Text(
+                        text = "Belum Ada Bini Gweh",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Ayo cari nama karakter cewek donghua/anime di kolom atas dan jadikan bini pertamamu!",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        } else {
+            // Grid of Saved Waifus chunked in rows of 2
+            biniGwehItems.chunked(2).forEach { pair ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    pair.forEach { item ->
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(MaterialTheme.colorScheme.surface)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
+                                .clickable { selectedItemForDetail = item }
+                        ) {
+                            Column {
+                                // Image
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(180.dp)
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                ) {
+                                    SubcomposeAsyncImage(
+                                        model = item.imageUrl,
+                                        contentDescription = item.name,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop,
+                                        loading = {
+                                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                                CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                                            }
+                                        }
+                                    )
+
+                                    // Heart Tag Overlay
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(8.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.White.copy(alpha = 0.8f))
+                                            .size(28.dp)
+                                            .clickable { viewModel.deleteBiniGweh(item) },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "Cerai",
+                                            tint = Color.Red,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+
+                                // Details
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Text(
+                                        text = item.name,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 13.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = item.sourceName,
+                                        fontSize = 11.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    if (pair.size == 1) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+        }
+    }
+
+    // Detail Dialog
+    selectedItemForDetail?.let { item ->
+        Dialog(onDismissRequest = { selectedItemForDetail = null }) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(280.dp)
+                    ) {
+                        SubcomposeAsyncImage(
+                            model = item.imageUrl,
+                            contentDescription = item.name,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)),
+                                        startY = 150f
+                                    )
+                                )
+                        )
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(16.dp)
+                        ) {
+                            Text(
+                                text = item.name,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 22.sp,
+                                color = Color.White
+                            )
+                            Text(
+                                text = item.sourceName,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.White.copy(alpha = 0.8f)
+                            )
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        if (item.description.isNotEmpty()) {
+                            Text(
+                                text = "Biografi / Info:",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = item.description,
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                            )
+                        }
+
+                        Divider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Dinikahi Pada:",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            )
+                            val dateStr = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(item.addedAt))
+                            Text(
+                                text = dateStr,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                viewModel.deleteBiniGweh(item)
+                                selectedItemForDetail = null
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Icon(imageVector = Icons.Default.Delete, contentDescription = null)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Cerai (Hapus dari MBG) 💔")
+                        }
                     }
                 }
             }

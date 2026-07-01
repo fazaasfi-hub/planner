@@ -59,8 +59,7 @@ class TransactionNotificationListener : NotificationListenerService() {
                                     lowerText.contains("telah dibayar") ||
                                     lowerText.contains("ditarik") ||
                                     lowerText.contains("kirim uang") ||
-                                    lowerText.contains("berhasil bayar") ||
-                                    lowerText.contains("berhasil kirim")
+                                    lowerText.contains("bayar di")
 
             val isIncomeExplicit = lowerText.contains("menerima") ||
                                    lowerText.contains("diterima") ||
@@ -77,11 +76,44 @@ class TransactionNotificationListener : NotificationListenerService() {
                                    lowerText.contains("refund") ||
                                    lowerText.contains("uang masuk") ||
                                    lowerText.contains("berhasil masuk") ||
-                                   lowerText.contains("terima transfer") ||
-                                   lowerText.contains("dari ") // if it's from someone, it's usually income
+                                   lowerText.contains("terima transfer")
 
-            // If it contains both, we need to be careful. But 'dari' strongly implies income.
-            val type = if (isIncomeExplicit) "income" else if (isExpenseExplicit) "expense" else "income" // Defaulting ambiguous things to income since user complained about false expenses.
+            // Filter out promotional/ad notifications that often contain "Rp" but aren't transactions
+            val isPromo = lowerText.contains("promo") ||
+                          lowerText.contains("voucher") ||
+                          lowerText.contains("dapatkan") ||
+                          lowerText.contains("menangkan") ||
+                          lowerText.contains("yuk") ||
+                          lowerText.contains("buruan") ||
+                          lowerText.contains("diskon") ||
+                          lowerText.contains("potongan") ||
+                          lowerText.contains("cek sekarang") ||
+                          lowerText.contains("special for you") ||
+                          lowerText.contains("khusus buat kamu")
+
+            if (isPromo) {
+                Log.d("NotificationListener", "Ignored DANA promo notification: $fullText")
+                return
+            }
+
+            // Stricter type determination - must be explicit
+            val type = when {
+                isIncomeExplicit && !isExpenseExplicit -> "income"
+                isExpenseExplicit && !isIncomeExplicit -> "expense"
+                isIncomeExplicit && isExpenseExplicit -> {
+                    // If both are present, try to find which one is more specific/dominant
+                    if (lowerText.contains("menerima") || lowerText.contains("masuk")) "income"
+                    else if (lowerText.contains("kirim") || lowerText.contains("bayar")) "expense"
+                    else return // Too ambiguous
+                }
+                else -> return // Ignore if not explicitly income or expense
+            }
+
+            // Ignore very small amounts that might be noise (less than 100 rupiah)
+            if (amount < 100) {
+                Log.d("NotificationListener", "Ignored tiny DANA amount: $amount")
+                return
+            }
 
             // Clean up the description
             val description = when {

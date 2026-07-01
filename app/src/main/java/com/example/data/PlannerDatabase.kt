@@ -92,6 +92,16 @@ data class BudgetTransaction(
     val date: Long = System.currentTimeMillis()
 )
 
+@Entity(tableName = "bini_gweh_items")
+data class BiniGwehItem(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val description: String = "",
+    val imageUrl: String,
+    val sourceName: String = "",
+    val addedAt: Long = System.currentTimeMillis()
+)
+
 @Dao
 interface PlannerDao {
     // Study schedules
@@ -197,6 +207,19 @@ interface PlannerDao {
 
     @Query("DELETE FROM budget_transactions")
     suspend fun clearAllTransactions()
+
+    // Bini Gweh (Waifu) Items
+    @Query("SELECT * FROM bini_gweh_items ORDER BY addedAt DESC")
+    fun getAllBiniGwehItems(): Flow<List<BiniGwehItem>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBiniGweh(item: BiniGwehItem)
+
+    @Delete
+    suspend fun deleteBiniGweh(item: BiniGwehItem)
+
+    @Query("DELETE FROM bini_gweh_items")
+    suspend fun clearAllBiniGweh()
 }
 
 @Database(
@@ -208,9 +231,10 @@ interface PlannerDao {
         SavingGoal::class,
         DonghuaItem::class,
         BudgetTransaction::class,
-        StepLog::class
+        StepLog::class,
+        BiniGwehItem::class
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class PlannerDatabase : RoomDatabase() {

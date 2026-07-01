@@ -11,7 +11,7 @@ import java.util.Date
 import java.util.Locale
 
 enum class Screen {
-    Dashboard, Study, Workout, Saving, Donghua, Chart, Budget
+    Dashboard, Study, Workout, Saving, Donghua, Chart, Budget, Mbg
 }
 
 class PlannerViewModel(
@@ -91,6 +91,70 @@ class PlannerViewModel(
 
     val transactions: StateFlow<List<BudgetTransaction>> = repository.allTransactions
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val biniGwehItems: StateFlow<List<BiniGwehItem>> = repository.allBiniGwehItems
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val characterSearchService = CharacterSearchService()
+
+    private val _searchCharacterResult = MutableStateFlow<CharacterResult?>(null)
+    val searchCharacterResult: StateFlow<CharacterResult?> = _searchCharacterResult.asStateFlow()
+
+    private val _searchLoading = MutableStateFlow(false)
+    val searchLoading: StateFlow<Boolean> = _searchLoading.asStateFlow()
+
+    private val _searchError = MutableStateFlow<String?>(null)
+    val searchError: StateFlow<String?> = _searchError.asStateFlow()
+
+    fun searchCharacter(query: String) {
+        if (query.isBlank()) {
+            _searchError.value = "Nama karakter tidak boleh kosong"
+            return
+        }
+        viewModelScope.launch {
+            _searchLoading.value = true
+            _searchError.value = null
+            _searchCharacterResult.value = null
+            try {
+                val result = characterSearchService.searchCharacter(query)
+                if (result != null) {
+                    _searchCharacterResult.value = result
+                } else {
+                    _searchError.value = "Karakter '$query' tidak ditemukan di AniList maupun MyAnimeList."
+                }
+            } catch (e: Exception) {
+                _searchError.value = "Gagal memuat karakter: ${e.message}"
+            } finally {
+                _searchLoading.value = false
+            }
+        }
+    }
+
+    fun clearSearchResult() {
+        _searchCharacterResult.value = null
+        _searchError.value = null
+    }
+
+    fun addBiniGweh(name: String, description: String, imageUrl: String, sourceName: String) {
+        viewModelScope.launch {
+            repository.insertBiniGweh(
+                BiniGwehItem(
+                    name = name,
+                    description = description,
+                    imageUrl = imageUrl,
+                    sourceName = sourceName
+                )
+            )
+            showToast("$name berhasil ditambahkan ke Bini Gweh! ❤️")
+        }
+    }
+
+    fun deleteBiniGweh(item: BiniGwehItem) {
+        viewModelScope.launch {
+            repository.deleteBiniGweh(item)
+            showToast("${item.name} dihapus dari Bini Gweh")
+        }
+    }
 
     // ============================================================
     // STATE FLOW FOR 20 EXCITING FEATURES
@@ -817,6 +881,7 @@ class PlannerViewModel(
             repository.clearSavingGoals()
             repository.clearDonghua()
             repository.clearTransactions()
+            repository.clearBiniGweh()
             
             // Reinsert default time slots
             repository.insertTimeSlot(TimeSlot(startTime = "07:00", endTime = "08:00"))
