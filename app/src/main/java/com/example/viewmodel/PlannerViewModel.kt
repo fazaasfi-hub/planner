@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -95,6 +97,9 @@ class PlannerViewModel(
     val biniGwehItems: StateFlow<List<BiniGwehItem>> = repository.allBiniGwehItems
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val husbuItems: StateFlow<List<HusbuItem>> = repository.allHusbuItems
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     private val characterSearchService = CharacterSearchService()
 
     private val _searchCharacterResult = MutableStateFlow<CharacterResult?>(null)
@@ -153,6 +158,45 @@ class PlannerViewModel(
         viewModelScope.launch {
             repository.deleteBiniGweh(item)
             showToast("${item.name} dihapus dari Bini Gweh")
+        }
+    }
+
+    fun addHusbu(name: String, description: String, imageUrl: String, sourceName: String) {
+        viewModelScope.launch {
+            repository.insertHusbu(
+                HusbuItem(
+                    name = name,
+                    description = description,
+                    imageUrl = imageUrl,
+                    sourceName = sourceName
+                )
+            )
+            showToast("$name berhasil ditambahkan ke Husbu Sangar! 🔥")
+        }
+    }
+
+    fun deleteHusbu(item: HusbuItem) {
+        viewModelScope.launch {
+            repository.deleteHusbu(item)
+            showToast("${item.name} dihapus dari Husbu Sangar")
+        }
+    }
+
+    fun identifyCharacterFromImage(imageBytes: ByteArray) {
+        viewModelScope.launch {
+            _searchLoading.value = true
+            _searchError.value = null
+            
+            val result = withContext(Dispatchers.IO) {
+                characterSearchService.identifyCharacterFromImage(imageBytes)
+            }
+            
+            if (result != null) {
+                _searchCharacterResult.value = result
+            } else {
+                _searchError.value = "Gagal mengenali karakter dari foto. Coba foto lain!"
+            }
+            _searchLoading.value = false
         }
     }
 
@@ -882,6 +926,7 @@ class PlannerViewModel(
             repository.clearDonghua()
             repository.clearTransactions()
             repository.clearBiniGweh()
+            repository.clearHusbu()
             
             // Reinsert default time slots
             repository.insertTimeSlot(TimeSlot(startTime = "07:00", endTime = "08:00"))

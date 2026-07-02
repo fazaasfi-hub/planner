@@ -88,7 +88,7 @@ class CharacterSearchService {
         val apiKey = com.example.BuildConfig.GEMINI_API_KEY
         if (apiKey.isEmpty() || apiKey == "MY_GEMINI_API_KEY") return description
 
-        val prompt = "Terjemahkan biografi/deskripsi karakter anime/donghua berikut ke dalam Bahasa Indonesia yang sangat seru, kasual, penuh rasa sayang (cocok untuk waifu/bini), dan menarik. Jangan gunakan format markdown yang tebal berlebihan, buat agar rapi, ringkas, dan enak dibaca:\n\n$description"
+        val prompt = "Terjemahkan biografi/deskripsi karakter anime/donghua berikut ke dalam Bahasa Indonesia yang sangat seru, kasual, penuh pesona dan rasa sayang (cocok untuk waifu/husbu idaman), dan menarik. Jangan gunakan format markdown yang tebal berlebihan, buat agar rapi, ringkas, dan enak dibaca:\n\n$description"
         val response = callGeminiApi(prompt)
         return response ?: description
     }
@@ -98,13 +98,13 @@ class CharacterSearchService {
         if (apiKey.isEmpty() || apiKey == "MY_GEMINI_API_KEY") return null
 
         val prompt = """
-            Berikan informasi lengkap mengenai karakter wanita anime atau donghua bernama '$query' dalam format JSON. Jawab HANYA dengan JSON valid, tanpa backtick ```json atau penjelasan lainnya.
+            Berikan informasi lengkap mengenai karakter anime atau donghua (bisa laki-laki/husbu tampan atau perempuan/waifu cantik) bernama '$query' dalam format JSON. Jawab HANYA dengan JSON valid, tanpa backtick ```json atau penjelasan lainnya.
             Format JSON harus persis seperti ini:
             {
               "name": "Nama Karakter",
               "nativeName": "Nama Asli (Kanji/Hanzi)",
               "sourceName": "Asal Anime/Donghua",
-              "description": "Biografi/deskripsi lengkap dalam Bahasa Indonesia yang seru, kasual, penuh rasa sayang, dan menarik."
+              "description": "Biografi/deskripsi lengkap dalam Bahasa Indonesia yang seru, kasual, penuh pesona, dan sangat menarik."
             }
         """.trimIndent()
 
@@ -299,5 +299,66 @@ class CharacterSearchService {
             .replace(Regex("~"), "") // Strip tags
             .replace(Regex("\\[\\s*Written by[^\\]]*\\]"), "") // Strip MAL copyright note
             .trim()
+    }
+
+    suspend fun identifyCharacterFromImage(imageBytes: ByteArray): CharacterResult? = withContext(Dispatchers.IO) {
+        val apiKey = com.example.BuildConfig.GEMINI_API_KEY
+        if (apiKey.isEmpty() || apiKey == "MY_GEMINI_API_KEY") return@withContext null
+
+        val base64Image = android.util.Base64.encodeToString(imageBytes, android.util.Base64.NO_WRAP)
+        val prompt = """
+            Siapa karakter anime/donghua laki-laki (husbu) atau perempuan (waifu) di dalam foto ini?
+            Berikan informasi dalam format JSON:
+            {
+              "name": "Nama Karakter",
+              "nativeName": "Nama Asli (Kanji/Hanzi)",
+              "sourceName": "Asal Anime/Donghua",
+              "description": "Biografi/deskripsi singkat dalam Bahasa Indonesia yang seru."
+            }
+        """.trimIndent()
+
+        val url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$apiKey"
+        val jsonPayload = JSONObject().apply {
+            val contentsArray = org.json.JSONArray().apply {
+                put(JSONObject().apply {
+                    put("parts", org.json.JSONArray().apply {
+                        put(JSONObject().put("text", prompt))
+                        put(JSONObject().put("inlineData", JSONObject().apply {
+                            put("mimeType", "image/jpeg")
+                            put("data", base64Image)
+                        }))
+                    })
+                })
+            }
+            put("contents", contentsArray)
+        }
+
+        val mediaType = "application/json; charset=utf-8".toMediaType()
+        val requestBody = jsonPayload.toString().toRequestBody(mediaType)
+        val request = Request.Builder().url(url).post(requestBody).build()
+
+        try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@withContext null
+                val bodyString = response.body?.string() ?: return@withContext null
+                val json = JSONObject(bodyString)
+                val text = json.getJSONArray("candidates").getJSONObject(0)
+                    .getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text")
+                
+                val cleanJson = text.trim().removeSurrounding("```json", "```").trim()
+                val charJson = JSONObject(cleanJson)
+                
+                return@withContext CharacterResult(
+                    name = charJson.getString("name"),
+                    nativeName = charJson.optString("nativeName", ""),
+                    imageUrl = "", // We will need to search for the image based on the name
+                    sourceName = charJson.optString("sourceName", "Anime / Donghua"),
+                    description = charJson.getString("description")
+                )
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return@withContext null
     }
 }

@@ -63,8 +63,8 @@ fun LoadingOverlay(isLoading: Boolean, onLoadingFinished: () -> Unit, modifier: 
             
             // Progress simulation starts after logo exit
             while (progress < 1f) {
-                delay(80)
-                progress += Random.nextFloat() * 0.04f + 0.01f
+                delay(50)
+                progress += Random.nextFloat() * 0.02f + 0.005f
             }
             progress = 1f
             delay(500)
@@ -124,6 +124,7 @@ fun LoadingOverlay(isLoading: Boolean, onLoadingFinished: () -> Unit, modifier: 
                             alpha = iconAlpha
                             scaleX = iconScale
                             scaleY = iconScale
+                            rotationZ = (1f - iconScale) * 10f // Subtle rotation
                         }
                     ) {
                         Box(
@@ -154,67 +155,73 @@ fun LoadingOverlay(isLoading: Boolean, onLoadingFinished: () -> Unit, modifier: 
                     }
 
                     // Stage 5: Progress Show
-                    if (stage == LoadingStage.PROGRESS_SHOW) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.graphicsLayer { alpha = progressAlpha }
-                        ) {
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(140.dp)) {
-                                // Progress Ring
-                                Canvas(modifier = Modifier.fillMaxSize().rotate(-90f)) {
-                                    drawCircle(
-                                        color = Color(0xFF1E293B),
-                                        style = Stroke(width = 5.dp.toPx())
+                    AnimatedContent(
+                        targetState = stage == LoadingStage.PROGRESS_SHOW,
+                        transitionSpec = { fadeIn(animationSpec = tween(500)) togetherWith fadeOut(animationSpec = tween(500)) },
+                        label = "progressContent"
+                    ) { showProgress ->
+                        if (showProgress) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.graphicsLayer { alpha = progressAlpha }
+                            ) {
+                                Box(contentAlignment = Alignment.Center, modifier = Modifier.size(140.dp)) {
+                                    // Progress Ring
+                                    Canvas(modifier = Modifier.fillMaxSize().rotate(-90f)) {
+                                        drawCircle(
+                                            color = Color(0xFF1E293B),
+                                            style = Stroke(width = 5.dp.toPx())
+                                        )
+                                        drawArc(
+                                            brush = Brush.sweepGradient(
+                                                colors = listOf(Color(0xFF818CF8), Color(0xFF4ADE80), Color(0xFF818CF8))
+                                            ),
+                                            startAngle = 0f,
+                                            sweepAngle = progress * 360f,
+                                            useCenter = false,
+                                            style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round)
+                                        )
+                                    }
+                                    
+                                    Text(
+                                        text = "${(progress * 100).toInt()}%",
+                                        color = Color(0xFF818CF8),
+                                        fontSize = 26.sp,
+                                        fontWeight = FontWeight.Bold
                                     )
-                                    drawArc(
-                                        brush = Brush.sweepGradient(
-                                            colors = listOf(Color(0xFF818CF8), Color(0xFF4ADE80), Color(0xFF818CF8))
-                                        ),
-                                        startAngle = 0f,
-                                        sweepAngle = progress * 360f,
-                                        useCenter = false,
-                                        style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round)
+                                }
+                                
+                                Spacer(modifier = Modifier.height(40.dp))
+                                
+                                // Track
+                                Box(
+                                    modifier = Modifier
+                                        .width(260.dp)
+                                        .height(8.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF1E293B))
+                                ) {
+                                    // Fill
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxHeight()
+                                            .fillMaxWidth(progress)
+                                            .background(
+                                                brush = Brush.linearGradient(
+                                                    colors = listOf(Color(0xFF818CF8), Color(0xFF4ADE80))
+                                                )
+                                            )
                                     )
                                 }
                                 
                                 Text(
-                                    text = "${(progress * 100).toInt()}%",
-                                    color = Color(0xFF818CF8),
-                                    fontSize = 26.sp,
-                                    fontWeight = FontWeight.Bold
+                                    text = "Mempersiapkan produktivitas Anda...",
+                                    color = Color(0xFF94A3B8),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(top = 16.dp)
                                 )
                             }
-                            
-                            Spacer(modifier = Modifier.height(40.dp))
-                            
-                            // Track
-                            Box(
-                                modifier = Modifier
-                                    .width(260.dp)
-                                    .height(8.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF1E293B))
-                            ) {
-                                // Fill
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxHeight()
-                                        .fillMaxWidth(progress)
-                                        .background(
-                                            brush = Brush.linearGradient(
-                                                colors = listOf(Color(0xFF818CF8), Color(0xFF4ADE80))
-                                            )
-                                        )
-                                )
-                            }
-                            
-                            Text(
-                                text = "Mempersiapkan produktivitas Anda...",
-                                color = Color(0xFF94A3B8),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.padding(top = 16.dp)
-                            )
                         }
                     }
                 }

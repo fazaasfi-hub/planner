@@ -56,4 +56,10 @@ class PlannerRepository(private val plannerDao: PlannerDao) {
     suspend fun insertBiniGweh(item: BiniGwehItem) = plannerDao.insertBiniGweh(item)
     suspend fun deleteBiniGweh(item: BiniGwehItem) = plannerDao.deleteBiniGweh(item)
     suspend fun clearBiniGweh() = plannerDao.clearAllBiniGweh()
+
+    // Husbu (MHS) Items
+    val allHusbuItems: Flow<List<HusbuItem>> = plannerDao.getAllHusbuItems()
+    suspend fun insertHusbu(item: HusbuItem) = plannerDao.insertHusbu(item)
+    suspend fun deleteHusbu(item: HusbuItem) = plannerDao.deleteHusbu(item)
+    suspend fun clearHusbu() = plannerDao.clearAllHusbu()
 }

@@ -102,6 +102,16 @@ data class BiniGwehItem(
     val addedAt: Long = System.currentTimeMillis()
 )
 
+@Entity(tableName = "husbu_items")
+data class HusbuItem(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val description: String = "",
+    val imageUrl: String,
+    val sourceName: String = "",
+    val addedAt: Long = System.currentTimeMillis()
+)
+
 @Dao
 interface PlannerDao {
     // Study schedules
@@ -220,6 +230,19 @@ interface PlannerDao {
 
     @Query("DELETE FROM bini_gweh_items")
     suspend fun clearAllBiniGweh()
+
+    // Husbu (MHS) Items
+    @Query("SELECT * FROM husbu_items ORDER BY addedAt DESC")
+    fun getAllHusbuItems(): Flow<List<HusbuItem>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertHusbu(item: HusbuItem)
+
+    @Delete
+    suspend fun deleteHusbu(item: HusbuItem)
+
+    @Query("DELETE FROM husbu_items")
+    suspend fun clearAllHusbu()
 }
 
 @Database(
@@ -232,9 +255,10 @@ interface PlannerDao {
         DonghuaItem::class,
         BudgetTransaction::class,
         StepLog::class,
-        BiniGwehItem::class
+        BiniGwehItem::class,
+        HusbuItem::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class PlannerDatabase : RoomDatabase() {
