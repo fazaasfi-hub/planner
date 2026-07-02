@@ -191,23 +191,15 @@ fun StaggeredEntrance(
         visible = true
     }
     
-    val alpha by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(200, easing = LinearOutSlowInEasing),
-        label = "alpha"
-    )
-    val offsetY by animateFloatAsState(
-        targetValue = if (visible) 0f else 20f,
-        animationSpec = tween(200, easing = LinearOutSlowInEasing),
-        label = "offsetY"
-    )
-
-    Box(
-        modifier = Modifier
-            .graphicsLayer {
-                this.alpha = alpha
-                this.translationY = offsetY
-            }
+    // Using AnimatedVisibility again for smoother, more natural transition
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(600, easing = LinearOutSlowInEasing)) + 
+                slideInVertically(
+                    initialOffsetY = { it / 10 },
+                    animationSpec = tween(600, easing = LinearOutSlowInEasing)
+                ),
+        exit = fadeOut(animationSpec = tween(300))
     ) {
         content()
     }
@@ -4793,10 +4785,8 @@ fun BudgetScreen(viewModel: PlannerViewModel) {
 
     val coroutineScope = rememberCoroutineScope()
 
-    // AUTOMATIC DANA SYSTEM SYNCRONIZER STATES
-    var isDirectSyncEnabled by remember { mutableStateOf(true) }
+    var isLayoutEditMode by remember { mutableStateOf(false) }
     var walletPhysicalBalance by remember { mutableStateOf(0.0) }
-    var isDetectingDANA by remember { mutableStateOf(false) }
 
     val scrollState = rememberScrollState()
 
@@ -4953,62 +4943,6 @@ fun BudgetScreen(viewModel: PlannerViewModel) {
             }
         }
 
-        // AUTOMATIC DETECT BUTTON ONLY (DIRECT FROM DANA SYSTEM)
-        StaggeredEntrance(index = 2) {
-            Button(
-                onClick = {
-                    if (!isDetectingDANA) {
-                        coroutineScope.launch {
-                            isDetectingDANA = true
-                            kotlinx.coroutines.delay(1200) // Simulate real API network delay
-                            isDetectingDANA = false
-                            
-                            android.widget.Toast.makeText(
-                                context, 
-                                "⚡ [DANA API] Sinkronisasi Berhasil! Saldo DANA Anda sudah up-to-date dengan aplikasi.", 
-                                android.widget.Toast.LENGTH_LONG
-                            ).show()
-                        }
-                    }
-                },
-                enabled = !isDetectingDANA,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = SuccessGreen,
-                    contentColor = Color.White
-                ),
-                contentPadding = PaddingValues(vertical = 14.dp)
-            ) {
-                if (isDetectingDANA) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "Menghubungkan & Membaca API DANA...", 
-                        fontWeight = FontWeight.ExtraBold, 
-                        fontSize = 14.sp
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Outlined.Sync,
-                        contentDescription = "Deteksi DANA",
-                        modifier = Modifier.size(20.dp),
-                        tint = Color.White
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "Deteksi Saldo DANA Otomatis", 
-                        fontWeight = FontWeight.ExtraBold, 
-                        fontSize = 14.sp
-                    )
-                }
-            }
-        }
-
         // TRANSACTIONS LIST CARD WITH SMOOTH SIZE TRANSITIONS
         StaggeredEntrance(index = 3) {
             GlassyCard(
@@ -5024,10 +4958,21 @@ fun BudgetScreen(viewModel: PlannerViewModel) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(text = "Riwayat Transaksi", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Button(onClick = { showAddTxDialog = true }, shape = RoundedCornerShape(12.dp)) {
-                            Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah")
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Transaksi")
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            IconButton(onClick = { android.widget.Toast.makeText(context, "Scan Resi: Fitur Kamera segera hadir!", android.widget.Toast.LENGTH_SHORT).show() }) {
+                                Icon(imageVector = Icons.Outlined.PhotoCamera, contentDescription = "Scan Resi")
+                            }
+                            IconButton(onClick = { android.widget.Toast.makeText(context, "Voice-to-Task: Fitur Rekam segera hadir!", android.widget.Toast.LENGTH_SHORT).show() }) {
+                                Icon(imageVector = Icons.Outlined.Mic, contentDescription = "Voice-to-Task")
+                            }
+                            IconButton(onClick = { isLayoutEditMode = !isLayoutEditMode }) {
+                                Icon(imageVector = Icons.Outlined.DashboardCustomize, contentDescription = "Edit UI")
+                            }
+                            Button(onClick = { showAddTxDialog = true }, shape = RoundedCornerShape(12.dp)) {
+                                Icon(imageVector = Icons.Outlined.Add, contentDescription = "Tambah")
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Transaksi")
+                            }
                         }
                     }
 

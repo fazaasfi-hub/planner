@@ -96,17 +96,10 @@ class TransactionNotificationListener : NotificationListenerService() {
                 return
             }
 
-            // Stricter type determination - must be explicit
+            // Stricter type determination - ONLY income
             val type = when {
-                isIncomeExplicit && !isExpenseExplicit -> "income"
-                isExpenseExplicit && !isIncomeExplicit -> "expense"
-                isIncomeExplicit && isExpenseExplicit -> {
-                    // If both are present, try to find which one is more specific/dominant
-                    if (lowerText.contains("menerima") || lowerText.contains("masuk")) "income"
-                    else if (lowerText.contains("kirim") || lowerText.contains("bayar")) "expense"
-                    else return // Too ambiguous
-                }
-                else -> return // Ignore if not explicitly income or expense
+                isIncomeExplicit -> "income"
+                else -> return // Ignore if not explicitly income
             }
 
             // Ignore very small amounts that might be noise (less than 100 rupiah)

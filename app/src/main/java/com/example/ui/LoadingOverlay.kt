@@ -63,8 +63,8 @@ fun LoadingOverlay(isLoading: Boolean, onLoadingFinished: () -> Unit, modifier: 
             
             // Progress simulation starts after logo exit
             while (progress < 1f) {
-                delay(50)
-                progress += Random.nextFloat() * 0.02f + 0.005f
+                delay(120) // Slower progress simulation
+                progress += Random.nextFloat() * 0.015f + 0.002f // Smaller increments
             }
             progress = 1f
             delay(500)
@@ -79,11 +79,21 @@ fun LoadingOverlay(isLoading: Boolean, onLoadingFinished: () -> Unit, modifier: 
     
     val iconScale by animateFloatAsState(
         targetValue = when (stage) {
-            LoadingStage.ICON_APPEAR -> 1.6f
-            LoadingStage.ICON_SHRINK, LoadingStage.NAME_APPEAR -> 1.0f
-            else -> 0.5f
+            LoadingStage.ICON_APPEAR -> 1.7f
+            LoadingStage.ICON_SHRINK, LoadingStage.NAME_APPEAR -> 1.1f
+            else -> 0.4f
         },
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow), label = "iconScale"
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow), label = "iconScale"
+    )
+    
+    // Add a subtle rotation for elegance
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = -5f,
+        targetValue = 5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(4000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ), label = "rotation"
     )
 
     val nameAlpha by animateFloatAsState(
@@ -124,7 +134,7 @@ fun LoadingOverlay(isLoading: Boolean, onLoadingFinished: () -> Unit, modifier: 
                             alpha = iconAlpha
                             scaleX = iconScale
                             scaleY = iconScale
-                            rotationZ = (1f - iconScale) * 10f // Subtle rotation
+                            rotationZ = rotation // Apply rotation
                         }
                     ) {
                         Box(
